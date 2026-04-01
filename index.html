@@ -3,17 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PIPEI 求职助手</title>
+    <title>PIPEI · 智能求职助手</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- PDF 解析 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <!-- Word 解析 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e6f0fa 100%);
+        }
+        .card-hover {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px -8px rgba(0,0,0,0.1);
+        }
         .loader {
             border: 4px solid #f3f3f3;
-            border-top: 4px solid #3498db;
+            border-top: 4px solid #4f46e5;
             border-radius: 50%;
             width: 40px;
             height: 40px;
@@ -25,8 +39,8 @@
         }
         .tab-active {
             border-bottom-width: 2px;
-            border-color: #3b82f6;
-            color: #3b82f6;
+            border-color: #4f46e5;
+            color: #4f46e5;
         }
         .tab-inactive {
             border-bottom-width: 2px;
@@ -34,58 +48,71 @@
             color: #6b7280;
         }
         .tab-inactive:hover {
-            color: #374151;
+            color: #1f2937;
         }
     </style>
 </head>
-<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen py-8">
+<body class="min-h-screen py-8">
     <div class="container mx-auto px-4 max-w-6xl">
         <!-- 头部 -->
-        <div class="text-center mb-8">
-            <h1 class="text-4xl font-bold text-indigo-800">PIPEI 求职助手</h1>
-            <p class="text-gray-600 mt-2">上传简历，粘贴JD，一键获取翻译与智能匹配</p>
+        <div class="text-center mb-10">
+            <h1 class="text-5xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                PIPEI
+            </h1>
+            <p class="text-gray-600 mt-2 text-lg">上传简历 · 粘贴JD · 智能翻译与匹配</p>
         </div>
 
         <!-- 左右两栏 -->
-        <div class="flex flex-col md:flex-row gap-8">
+        <div class="grid md:grid-cols-2 gap-8 mb-8">
             <!-- 左侧：简历上传 -->
-            <div class="md:w-1/2 bg-white rounded-xl shadow-lg p-6">
-                <h2 class="text-xl font-semibold text-gray-800 mb-4">📄 简历上传</h2>
-                <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+            <div class="bg-white rounded-2xl shadow-lg p-6 card-hover">
+                <div class="flex items-center gap-2 mb-4">
+                    <i class="fas fa-file-alt text-indigo-500 text-xl"></i>
+                    <h2 class="text-xl font-semibold text-gray-800">📄 简历上传</h2>
+                </div>
+                <div class="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-indigo-300 transition">
                     <input type="file" id="resumeFile" accept=".pdf,.docx" class="hidden" />
-                    <button id="uploadBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg transition">
-                        选择文件 (PDF/Word)
+                    <button id="uploadBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg transition shadow-sm">
+                        <i class="fas fa-cloud-upload-alt mr-2"></i>选择文件 (PDF/Word)
                     </button>
                     <p id="fileName" class="text-sm text-gray-500 mt-2">未选择文件</p>
                 </div>
                 <div class="mt-4">
                     <label class="block text-sm font-medium text-gray-700 mb-1">或直接粘贴简历文本</label>
-                    <textarea id="resumeText" rows="6" class="w-full border border-gray-300 rounded-lg p-2" placeholder="将简历文本粘贴在这里..."></textarea>
+                    <textarea id="resumeText" rows="6" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="将简历文本粘贴在这里..."></textarea>
                 </div>
             </div>
 
-            <!-- 右侧：JD输入 + 开始分析按钮 -->
-            <div class="md:w-1/2 bg-white rounded-xl shadow-lg p-6">
-                <h2 class="text-xl font-semibold text-gray-800 mb-4">💼 职位描述 (JD)</h2>
-                <textarea id="jdText" rows="8" class="w-full border border-gray-300 rounded-lg p-2" placeholder="请粘贴职位描述..."></textarea>
-                <div class="mt-4">
-                    <button id="analyzeBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg transition">
-                        开始分析
-                    </button>
+            <!-- 右侧：JD输入 -->
+            <div class="bg-white rounded-2xl shadow-lg p-6 card-hover">
+                <div class="flex items-center gap-2 mb-4">
+                    <i class="fas fa-briefcase text-indigo-500 text-xl"></i>
+                    <h2 class="text-xl font-semibold text-gray-800">💼 职位描述 (JD)</h2>
                 </div>
+                <textarea id="jdText" rows="8" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="请粘贴职位描述..."></textarea>
             </div>
         </div>
 
+        <!-- 开始分析按钮（居中） -->
+        <div class="flex justify-center mb-8">
+            <button id="analyzeBtn" class="bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-semibold py-3 px-10 rounded-xl shadow-lg transition transform hover:scale-105 flex items-center gap-2">
+                <i class="fas fa-chart-line"></i> 开始分析
+            </button>
+        </div>
+
         <!-- 结果展示区（带选项卡） -->
-        <div class="mt-8 bg-white rounded-xl shadow-lg p-6">
+        <div class="bg-white rounded-2xl shadow-xl p-6 card-hover">
             <div class="border-b border-gray-200">
-                <nav class="flex gap-4">
-                    <button id="tabTranslate" class="py-2 px-4 text-blue-600 border-b-2 border-blue-600 font-medium">翻译结果</button>
-                    <button id="tabMatch" class="py-2 px-4 text-gray-500 hover:text-gray-700">智能匹配</button>
+                <nav class="flex gap-6">
+                    <button id="tabTranslate" class="py-2 px-1 text-indigo-600 border-b-2 border-indigo-600 font-medium">📖 JD分析</button>
+                    <button id="tabMatch" class="py-2 px-1 text-gray-500 hover:text-gray-700">🎯 智能匹配</button>
                 </nav>
             </div>
-            <div id="resultContainer" class="mt-4">
-                <div class="text-gray-400 text-center py-8">点击「开始分析」按钮，结果将显示在这里</div>
+            <div id="resultContainer" class="mt-6">
+                <div class="text-gray-400 text-center py-12 flex flex-col items-center gap-2">
+                    <i class="fas fa-lightbulb text-4xl opacity-30"></i>
+                    <p>点击「开始分析」按钮，结果将显示在这里</p>
+                </div>
             </div>
         </div>
     </div>
@@ -106,14 +133,14 @@
         let resumeTextContent = "";
         let translationResult = "";
         let matchResult = null;
-        let currentTab = "translate";
+        let currentTab = "translate"; // 'translate' or 'match'
 
         function showLoading() {
-            resultContainer.innerHTML = `<div class="flex justify-center py-8"><div class="loader"></div><span class="ml-2 text-gray-600">分析中，请稍候...</span></div>`;
+            resultContainer.innerHTML = `<div class="flex justify-center py-12"><div class="loader"></div><span class="ml-3 text-gray-600">分析中，请稍候...</span></div>`;
         }
 
         function showError(message) {
-            resultContainer.innerHTML = `<div class="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg">${message}</div>`;
+            resultContainer.innerHTML = `<div class="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg flex items-center gap-2"><i class="fas fa-exclamation-triangle"></i> ${message}</div>`;
         }
 
         async function callDifyAPI(inputs) {
@@ -130,6 +157,7 @@
             return data;
         }
 
+        // PDF 解析
         function parsePDF(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -159,6 +187,7 @@
             });
         }
 
+        // Word 解析
         function parseDOCX(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -172,6 +201,7 @@
             });
         }
 
+        // 上传文件
         uploadBtn.addEventListener('click', () => resumeFileInput.click());
         resumeFileInput.addEventListener('change', async (e) => {
             const file = e.target.files[0];
@@ -199,71 +229,179 @@
             resumeTextContent = resumeTextArea.value;
         });
 
-        function renderTranslation(text) {
-            return `<div class="prose max-w-none"><div class="bg-gray-50 p-4 rounded-lg whitespace-pre-wrap">${text.replace(/\n/g, '<br>')}</div></div>`;
+        // 解析翻译文本为三个卡片
+        function parseTranslationToSections(text) {
+            // 默认三个部分
+            let responsibilities = "";
+            let requirements = "";
+            let plus = "";
+
+            // 匹配各部分的标题和内容（可能包含列表项）
+            // 假设文本结构如：
+            // 岗位职责：
+            // - 内容1
+            // - 内容2
+            // 岗位要求：
+            // - 内容3
+            // 加分项：
+            // - 内容4
+            // 或直接用标题分割
+            const sections = {
+                "岗位职责": "",
+                "岗位要求": "",
+                "加分项": ""
+            };
+            let currentSection = null;
+            const lines = text.split('\n');
+            for (let line of lines) {
+                const trimmed = line.trim();
+                if (trimmed.includes("岗位职责")) {
+                    currentSection = "岗位职责";
+                    continue;
+                } else if (trimmed.includes("岗位要求")) {
+                    currentSection = "岗位要求";
+                    continue;
+                } else if (trimmed.includes("加分项")) {
+                    currentSection = "加分项";
+                    continue;
+                }
+                if (currentSection && trimmed) {
+                    sections[currentSection] += trimmed + "\n";
+                }
+            }
+            // 清理多余换行
+            responsibilities = sections["岗位职责"].trim();
+            requirements = sections["岗位要求"].trim();
+            plus = sections["加分项"].trim();
+            return { responsibilities, requirements, plus };
         }
 
-        // 新渲染函数：四卡片布局，清晰展示强匹配、可弱化、可深挖、不匹配
+        // 渲染 JD 分析结果（三个卡片）
+        function renderTranslation(text) {
+            const { responsibilities, requirements, plus } = parseTranslationToSections(text);
+            const cardClass = "bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition";
+            const emptyClass = "text-gray-400 italic";
+            return `
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="${cardClass}">
+                        <div class="flex items-center gap-2 mb-3 border-b pb-2">
+                            <i class="fas fa-tasks text-indigo-500"></i>
+                            <h3 class="font-semibold text-gray-800">岗位职责</h3>
+                        </div>
+                        <div class="text-sm text-gray-700 whitespace-pre-wrap">${responsibilities ? responsibilities.replace(/\n/g, '<br>') : '<span class="text-gray-400 italic">无</span>'}</div>
+                    </div>
+                    <div class="${cardClass}">
+                        <div class="flex items-center gap-2 mb-3 border-b pb-2">
+                            <i class="fas fa-clipboard-list text-indigo-500"></i>
+                            <h3 class="font-semibold text-gray-800">岗位要求</h3>
+                        </div>
+                        <div class="text-sm text-gray-700 whitespace-pre-wrap">${requirements ? requirements.replace(/\n/g, '<br>') : '<span class="text-gray-400 italic">无</span>'}</div>
+                    </div>
+                    <div class="${cardClass}">
+                        <div class="flex items-center gap-2 mb-3 border-b pb-2">
+                            <i class="fas fa-star text-indigo-500"></i>
+                            <h3 class="font-semibold text-gray-800">加分项</h3>
+                        </div>
+                        <div class="text-sm text-gray-700 whitespace-pre-wrap">${plus ? plus.replace(/\n/g, '<br>') : '<span class="text-gray-400 italic">无</span>'}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 渲染智能匹配结果（四卡片布局）
         function renderMatchResult(data) {
             const overall = data.overall_match || { score: 0, reason: '' };
             const subs = data.sub_scores || { skills: 0, experience: 0, education: 0 };
+            const abilities = data.abilities || { have: [], missing: [] };
             const opt = data.optimization || { keep: [], weaken: [], deepen: [], not_match: [] };
             const advice = data.application_advice || { suggestion: '', reason: '' };
 
-            let html = `
+            // 已具备/缺失能力
+            const haveSkills = abilities.have.map(h => `<li class="mb-1"><i class="fas fa-check-circle text-green-500 mr-2"></i>${h.name} (${h.level})</li>`).join('');
+            const missingSkills = abilities.missing.map(m => `<li class="mb-1"><i class="fas fa-times-circle text-red-500 mr-2"></i>${m}</li>`).join('');
+
+            // 四个卡片
+            const keepItems = opt.keep.map(k => `<li class="mb-1">• ${k}</li>`).join('');
+            const weakenItems = opt.weaken.map(w => `<li class="mb-1">• ${w}</li>`).join('');
+            const deepenItems = opt.deepen.map(d => `<li class="mb-1">• ${d}</li>`).join('');
+            const notMatchItems = opt.not_match.map(n => `<li class="mb-1">• ${n}</li>`).join('');
+
+            const cardClass = "bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition";
+
+            return `
                 <div class="mb-6">
-                    <div class="flex items-center justify-between flex-wrap gap-2">
-                        <span class="text-2xl font-bold text-indigo-600">匹配度 ${overall.score}%</span>
-                        <span class="text-gray-500 text-sm">${overall.reason}</span>
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <div class="text-2xl font-bold text-indigo-600">匹配度 ${overall.score}%</div>
+                        <div class="text-sm text-gray-500">${overall.reason}</div>
                     </div>
                     <div class="mt-2 flex flex-wrap gap-4 text-sm">
-                        <span>技能匹配: ${subs.skills}%</span>
-                        <span>经验匹配: ${subs.experience}%</span>
-                        <span>教育匹配: ${subs.education}%</span>
+                        <span><i class="fas fa-code mr-1"></i>技能匹配: ${subs.skills}%</span>
+                        <span><i class="fas fa-briefcase mr-1"></i>经验匹配: ${subs.experience}%</span>
+                        <span><i class="fas fa-graduation-cap mr-1"></i>教育匹配: ${subs.education}%</span>
                     </div>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="border rounded-lg p-4 bg-green-50 border-green-200">
-                        <h3 class="font-semibold text-green-800">✅ 强匹配（保留）</h3>
-                        <ul class="list-disc list-inside mt-2">${opt.keep.map(i => `<li>${i}</li>`).join('') || '<li>无</li>'}</ul>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div class="${cardClass}">
+                        <h3 class="font-semibold text-green-700 flex items-center gap-2"><i class="fas fa-check-circle"></i>已具备能力</h3>
+                        <ul class="mt-2">${haveSkills || '<li class="text-gray-400 italic">无</li>'}</ul>
                     </div>
-                    <div class="border rounded-lg p-4 bg-yellow-50 border-yellow-200">
-                        <h3 class="font-semibold text-yellow-800">⚠️ 可弱化</h3>
-                        <ul class="list-disc list-inside mt-2">${opt.weaken.map(i => `<li>${i}</li>`).join('') || '<li>无</li>'}</ul>
-                    </div>
-                    <div class="border rounded-lg p-4 bg-blue-50 border-blue-200">
-                        <h3 class="font-semibold text-blue-800">🔍 可深挖</h3>
-                        <ul class="list-disc list-inside mt-2">${opt.deepen.map(i => `<li>${i}</li>`).join('') || '<li>无</li>'}</ul>
-                    </div>
-                    <div class="border rounded-lg p-4 bg-red-50 border-red-200">
-                        <h3 class="font-semibold text-red-800">❌ 不匹配</h3>
-                        <ul class="list-disc list-inside mt-2">${opt.not_match.map(i => `<li>${i}</li>`).join('') || '<li>无</li>'}</ul>
+                    <div class="${cardClass}">
+                        <h3 class="font-semibold text-red-600 flex items-center gap-2"><i class="fas fa-times-circle"></i>缺失能力</h3>
+                        <ul class="mt-2">${missingSkills || '<li class="text-gray-400 italic">无</li>'}</ul>
                     </div>
                 </div>
-                <div class="mt-4 p-3 bg-gray-100 rounded-lg">
-                    <span class="font-semibold">📌 投递建议：</span> ${advice.suggestion} — ${advice.reason}
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div class="${cardClass}">
+                        <h3 class="font-semibold text-green-700">✅ 强匹配（保留）</h3>
+                        <ul class="mt-2 list-disc list-inside">${keepItems || '<li>无</li>'}</ul>
+                    </div>
+                    <div class="${cardClass}">
+                        <h3 class="font-semibold text-yellow-700">⚠️ 可弱化</h3>
+                        <ul class="mt-2 list-disc list-inside">${weakenItems || '<li>无</li>'}</ul>
+                    </div>
+                    <div class="${cardClass}">
+                        <h3 class="font-semibold text-blue-700">🔍 可深挖</h3>
+                        <ul class="mt-2 list-disc list-inside">${deepenItems || '<li>无</li>'}</ul>
+                    </div>
+                    <div class="${cardClass}">
+                        <h3 class="font-semibold text-red-700">❌ 不匹配</h3>
+                        <ul class="mt-2 list-disc list-inside">${notMatchItems || '<li>无</li>'}</ul>
+                    </div>
+                </div>
+
+                <div class="mt-4 p-4 bg-indigo-50 rounded-xl border border-indigo-100">
+                    <div class="flex items-start gap-2">
+                        <i class="fas fa-lightbulb text-indigo-600 mt-0.5"></i>
+                        <div>
+                            <span class="font-semibold text-indigo-800">投递建议：</span>
+                            <span class="text-indigo-700">${advice.suggestion}</span>
+                            <p class="text-gray-700 text-sm mt-1">${advice.reason}</p>
+                        </div>
+                    </div>
                 </div>
             `;
-            return html;
         }
 
+        // 切换选项卡
         function switchTab(tab) {
             currentTab = tab;
             if (tab === 'translate') {
-                tabTranslateBtn.className = "py-2 px-4 text-blue-600 border-b-2 border-blue-600 font-medium";
-                tabMatchBtn.className = "py-2 px-4 text-gray-500 hover:text-gray-700";
+                tabTranslateBtn.className = "py-2 px-1 text-indigo-600 border-b-2 border-indigo-600 font-medium";
+                tabMatchBtn.className = "py-2 px-1 text-gray-500 hover:text-gray-700";
                 if (translationResult) {
                     resultContainer.innerHTML = renderTranslation(translationResult);
                 } else {
-                    resultContainer.innerHTML = '<div class="text-gray-400 text-center py-8">暂无翻译结果，请点击「开始分析」</div>';
+                    resultContainer.innerHTML = '<div class="text-gray-400 text-center py-12 flex flex-col items-center gap-2"><i class="fas fa-file-alt text-4xl opacity-30"></i><p>暂无JD分析结果，请点击「开始分析」</p></div>';
                 }
             } else {
-                tabMatchBtn.className = "py-2 px-4 text-blue-600 border-b-2 border-blue-600 font-medium";
-                tabTranslateBtn.className = "py-2 px-4 text-gray-500 hover:text-gray-700";
+                tabMatchBtn.className = "py-2 px-1 text-indigo-600 border-b-2 border-indigo-600 font-medium";
+                tabTranslateBtn.className = "py-2 px-1 text-gray-500 hover:text-gray-700";
                 if (matchResult) {
                     resultContainer.innerHTML = renderMatchResult(matchResult);
                 } else {
-                    resultContainer.innerHTML = '<div class="text-gray-400 text-center py-8">暂无匹配结果，请点击「开始分析」</div>';
+                    resultContainer.innerHTML = '<div class="text-gray-400 text-center py-12 flex flex-col items-center gap-2"><i class="fas fa-chart-line text-4xl opacity-30"></i><p>暂无匹配结果，请点击「开始分析」</p></div>';
                 }
             }
         }
@@ -271,6 +409,7 @@
         tabTranslateBtn.addEventListener('click', () => switchTab('translate'));
         tabMatchBtn.addEventListener('click', () => switchTab('match'));
 
+        // 开始分析
         analyzeBtn.addEventListener('click', async () => {
             const jd = jdTextArea.value.trim();
             if (!jd) {
@@ -298,6 +437,7 @@
                     resultContainer.innerHTML = `<div class="bg-yellow-50 p-4 rounded-lg">匹配结果格式异常，原始内容：<pre>${analysisRaw}</pre></div>`;
                     return;
                 }
+                // 默认显示 JD 分析选项卡
                 switchTab('translate');
             } catch (err) {
                 showError(err.message);

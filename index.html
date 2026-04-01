@@ -59,6 +59,16 @@
             flex: 1;
             min-height: 0;
         }
+        /* 修正 bullet point 位置 */
+        .custom-list {
+            list-style-type: disc;
+            padding-left: 1.25rem;
+        }
+        .custom-list li {
+            margin-bottom: 0.25rem;
+            white-space: normal;
+            word-break: break-word;
+        }
     </style>
 </head>
 <body class="min-h-screen py-8">
@@ -71,7 +81,7 @@
             <p class="text-gray-600 mt-2 text-lg">上传简历 · 粘贴JD · 智能分析与匹配</p>
         </div>
 
-        <!-- 左右两栏：使用 flex 确保高度一致 -->
+        <!-- 左右两栏 -->
         <div class="grid md:grid-cols-2 gap-8 mb-8">
             <!-- 左侧：简历上传 -->
             <div class="bg-white rounded-2xl shadow-lg p-6 card-hover flex flex-col">
@@ -287,17 +297,22 @@
             `;
         }
 
-        // 修复 bullet point 重复问题：移除手动添加的 •，只使用 <li> 自带的圆点
+        // 辅助函数：清理列表项中的换行符，确保单行显示
+        function cleanText(text) {
+            return text.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+        }
+
         function renderMatchResult(data) {
             const overall = data.overall_match || { score: 0, reason: '' };
             const subs = data.sub_scores || { skills: 0, experience: 0, education: 0 };
             const opt = data.optimization || { keep: [], weaken: [], deepen: [], not_match: [] };
             const advice = data.application_advice || { suggestion: '', reason: '' };
 
-            const keepItems = opt.keep.map(k => `<li>${k}</li>`).join('');
-            const weakenItems = opt.weaken.map(w => `<li>${w}</li>`).join('');
-            const deepenItems = opt.deepen.map(d => `<li>${d}</li>`).join('');
-            const notMatchItems = opt.not_match.map(n => `<li>${n}</li>`).join('');
+            // 清理列表项中的换行符，避免影响布局
+            const keepItems = opt.keep.map(k => `<li>${cleanText(k)}</li>`).join('');
+            const weakenItems = opt.weaken.map(w => `<li>${cleanText(w)}</li>`).join('');
+            const deepenItems = opt.deepen.map(d => `<li>${cleanText(d)}</li>`).join('');
+            const notMatchItems = opt.not_match.map(n => `<li>${cleanText(n)}</li>`).join('');
 
             const cardClass = "bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition";
 
@@ -317,19 +332,19 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                     <div class="${cardClass}">
                         <h3 class="font-semibold text-green-700">✅ 强匹配（保留）</h3>
-                        <ul class="mt-2 list-disc list-inside">${keepItems || '<li>无</li>'}</ul>
+                        <ul class="mt-2 custom-list">${keepItems || '<li>无</li>'}</ul>
                     </div>
                     <div class="${cardClass}">
                         <h3 class="font-semibold text-yellow-700">⚠️ 可弱化</h3>
-                        <ul class="mt-2 list-disc list-inside">${weakenItems || '<li>无</li>'}</ul>
+                        <ul class="mt-2 custom-list">${weakenItems || '<li>无</li>'}</ul>
                     </div>
                     <div class="${cardClass}">
                         <h3 class="font-semibold text-blue-700">🔍 可深挖</h3>
-                        <ul class="mt-2 list-disc list-inside">${deepenItems || '<li>无</li>'}</ul>
+                        <ul class="mt-2 custom-list">${deepenItems || '<li>无</li>'}</ul>
                     </div>
                     <div class="${cardClass}">
                         <h3 class="font-semibold text-red-700">❌ 不匹配</h3>
-                        <ul class="mt-2 list-disc list-inside">${notMatchItems || '<li>无</li>'}</ul>
+                        <ul class="mt-2 custom-list">${notMatchItems || '<li>无</li>'}</ul>
                     </div>
                 </div>
 

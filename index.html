@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PIPEI 求职助手</title>
+    <!-- 引入 Tailwind CSS 简化样式 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 PDF 和 Word 解析库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
+    <style>
+        /* 自定义加载动画 */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen py-8">
+    <div class="container mx-auto px-4 max-w-6xl">
+        <!-- 头部 -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-indigo-800">PIPEI 求职助手</h1>
+            <p class="text-gray-600 mt-2">上传简历，粘贴JD，一键翻译+智能匹配</p>
+        </div>
+
+        <!-- 左右两栏布局 -->
+        <div class="flex flex-col md:flex-row gap-8">
+            <!-- 左侧：简历上传 -->
+            <div class="md:w-1/2 bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">📄 简历上传</h2>
+                <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                    <input type="file" id="resumeFile" accept=".pdf,.docx" class="hidden" />
+                    <button id="uploadBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg transition">
+                        选择文件 (PDF/Word)
+                    </button>
+                    <p id="fileName" class="text-sm text-gray-500 mt-2">未选择文件</p>
+                </div>
+                <!-- 备用文本输入区（可选） -->
+                <div class="mt-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">或直接粘贴简历文本</label>
+                    <textarea id="resumeText" rows="6" class="w-full border border-gray-300 rounded-lg p-2" placeholder="将简历文本粘贴在这里..."></textarea>
+                </div>
+            </div>
+
+            <!-- 右侧：JD输入和操作 -->
+            <div class="md:w-1/2 bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">💼 职位描述 (JD)</h2>
+                <textarea id="jdText" rows="8" class="w-full border border-gray-300 rounded-lg p-2" placeholder="请粘贴职位描述..."></textarea>
+                <div class="flex gap-4 mt-4">
+                    <button id="translateBtn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition">
+                        翻译
+                    </button>
+                    <button id="matchBtn" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition">
+                        智能匹配
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 结果展示区 -->
+        <div class="mt-8 bg-white rounded-xl shadow-lg p-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">📊 分析结果</h2>
+            <div id="resultContainer">
+                <div class="text-gray-400 text-center py-8">点击按钮后结果将显示在这里</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let resumeTextContent = "";      // 存储当前简历文本
+        let currentTab = "translate";    // 当前选中的功能
+
+        // DOM 元素
+        const resumeFileInput = document.getElementById('resumeFile');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const fileNameSpan = document.getElementById('fileName');
+        const resumeTextArea = document.getElementById('resumeText');
+        const jdTextArea = document.getElementById('jdText');
+        const translateBtn = document.getElementById('translateBtn');
+        const matchBtn = document.getElementById('matchBtn');
+        const resultContainer = document.getElementById('resultContainer');
+
+        // 辅助函数：显示加载状态
+        function showLoading() {
+            resultContainer.innerHTML = `<div class="flex justify-center py-8"><div class="loader"></div><span class="ml-2 text-gray-600">分析中，请稍候...</span></div>`;
+        }
+
+        // 辅助函数：显示错误信息
+        function showError(message) {
+            resultContainer.innerHTML = `<div class="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg">${message}</div>`;
+        }
+
+        // 辅助函数：调用代理 API
+        async function callDifyAPI(inputs) {
+            const response = await fetch('/api/dify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ inputs })
+            });
+            if (!response.ok) {
+                const error = await response.text();
+                throw new Error(`API 调用失败: ${response.status} ${error}`);
+            }
+            const data = await response.json();
+            return data;
+        }
+
+        // 解析 PDF 文件
+        function parsePDF(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const typedarray = new Uint8Array(e.target.result);
+                    pdfjsLib.getDocument(typedarray).promise.then(pdf => {
+                        let fullText = "";
+                        const pages = [];
+                        for (let i = 1; i <= pdf.numPages; i++) {
+                            pages.push(pdf.getPage(i));
+                        }
+                        Promise.all(pages).then(pages => {
+                            let pagePromises = pages.map(page => page.getTextContent());
+                            Promise.all(pagePromises).then(textContents => {
+                                textContents.forEach(textContent => {
+                                    textContent.items.forEach(item => {
+                                        fullText += item.str + " ";
+                                    });
+                                });
+                                resolve(fullText.trim());
+                            }).catch(reject);
+                        }).catch(reject);
+                    }).catch(reject);
+                };
+                reader.onerror = reject;
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        // 解析 Word 文件
+        function parseDOCX(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    mammoth.extractRawText({ arrayBuffer: e.target.result })
+                        .then(result => resolve(result.value))
+                        .catch(reject);
+                };
+                reader.onerror = reject;
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        // 处理简历上传
+        uploadBtn.addEventListener('click', () => resumeFileInput.click());
+        resumeFileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            fileNameSpan.textContent = file.name;
+            try {
+                let text = "";
+                if (file.type === "application/pdf") {
+                    text = await parsePDF(file);
+                } else if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+                    text = await parseDOCX(file);
+                } else {
+                    alert("不支持的文件类型，请上传 PDF 或 Word 文档");
+                    return;
+                }
+                resumeTextContent = text;
+                resumeTextArea.value = text;
+            } catch (error) {
+                console.error(error);
+                alert("文件解析失败，请尝试直接粘贴文本");
+            }
+        });
+
+        // 监听手动输入的简历文本
+        resumeTextArea.addEventListener('input', () => {
+            resumeTextContent = resumeTextArea.value;
+        });
+
+        // 翻译功能
+        translateBtn.addEventListener('click', async () => {
+            const jd = jdTextArea.value.trim();
+            if (!jd) {
+                showError("请粘贴职位描述");
+                return;
+            }
+            currentTab = "translate";
+            showLoading();
+            try {
+                const result = await callDifyAPI({
+                    jd_text: jd,
+                    resume_text: resumeTextContent || "无简历"
+                });
+                // 假设工作流返回字段 translation
+                const translation = result.data.outputs.translation;
+                if (translation) {
+                    resultContainer.innerHTML = `<div class="prose max-w-none"><h3 class="text-lg font-semibold">翻译结果</h3><div class="bg-gray-50 p-4 rounded-lg">${translation.replace(/\n/g, '<br>')}</div></div>`;
+                } else {
+                    showError("翻译结果为空");
+                }
+            } catch (err) {
+                showError(err.message);
+            }
+        });
+
+        // 智能匹配功能
+        matchBtn.addEventListener('click', async () => {
+            const jd = jdTextArea.value.trim();
+            if (!jd) {
+                showError("请粘贴职位描述");
+                return;
+            }
+            if (!resumeTextContent) {
+                showError("请先上传简历或粘贴简历文本");
+                return;
+            }
+            currentTab = "match";
+            showLoading();
+            try {
+                const result = await callDifyAPI({
+                    jd_text: jd,
+                    resume_text: resumeTextContent
+                });
+                const analysis = result.data.outputs.analysis;
+                if (analysis) {
+                    // 尝试解析 JSON
+                    let parsed;
+                    try {
+                        parsed = JSON.parse(analysis);
+                    } catch(e) {
+                        // 如果不是JSON，直接显示文本
+                        resultContainer.innerHTML = `<div class="prose max-w-none"><pre class="bg-gray-50 p-4 rounded-lg whitespace-pre-wrap">${analysis}</pre></div>`;
+                        return;
+                    }
+                    // 构建四个卡片
+                    const optimization = parsed.optimization || {};
+                    const keep = optimization.keep || [];
+                    const weaken = optimization.weaken || [];
+                    const deepen = optimization.deepen || [];
+                    const not_match = optimization.not_match || [];
+                    const overall = parsed.overall_match || {};
+                    const advice = parsed.application_advice || {};
+
+                    let html = `
+                        <div class="mb-6">
+                            <div class="flex items-center justify-between">
+                                <span class="text-2xl font-bold text-indigo-600">匹配度 ${overall.score || 0}%</span>
+                                <span class="text-gray-500">${overall.reason || ''}</span>
+                            </div>
+                            <div class="mt-2 flex gap-4 text-sm">
+                                <span>技能匹配: ${parsed.sub_scores?.skills || 0}%</span>
+                                <span>经验匹配: ${parsed.sub_scores?.experience || 0}%</span>
+                                <span>教育匹配: ${parsed.sub_scores?.education || 0}%</span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="border rounded-lg p-4 bg-green-50 border-green-200">
+                                <h3 class="font-semibold text-green-800">✅ 强匹配（保留）</h3>
+                                <ul class="list-disc list-inside mt-2">${keep.map(item => `<li>${item}</li>`).join('') || '<li>无</li>'}</ul>
+                            </div>
+                            <div class="border rounded-lg p-4 bg-yellow-50 border-yellow-200">
+                                <h3 class="font-semibold text-yellow-800">⚠️ 可弱化</h3>
+                                <ul class="list-disc list-inside mt-2">${weaken.map(item => `<li>${item}</li>`).join('') || '<li>无</li>'}</ul>
+                            </div>
+                            <div class="border rounded-lg p-4 bg-blue-50 border-blue-200">
+                                <h3 class="font-semibold text-blue-800">🔍 可深挖</h3>
+                                <ul class="list-disc list-inside mt-2">${deepen.map(item => `<li>${item}</li>`).join('') || '<li>无</li>'}</ul>
+                            </div>
+                            <div class="border rounded-lg p-4 bg-red-50 border-red-200">
+                                <h3 class="font-semibold text-red-800">❌ 不匹配</h3>
+                                <ul class="list-disc list-inside mt-2">${not_match.map(item => `<li>${item}</li>`).join('') || '<li>无</li>'}</ul>
+                            </div>
+                        </div>
+                        <div class="mt-4 p-3 bg-gray-100 rounded-lg">
+                            <span class="font-semibold">投递建议：</span> ${advice.suggestion || ''} — ${advice.reason || ''}
+                        </div>
+                    `;
+                    resultContainer.innerHTML = html;
+                } else {
+                    showError("匹配结果为空");
+                }
+            } catch (err) {
+                showError(err.message);
+            }
+        });
+
+        // 初始化时，监听简历文本手动输入变化
+        resumeTextArea.addEventListener('input', () => {
+            resumeTextContent = resumeTextArea.value;
+        });
+    </script>
+</body>
+</html>

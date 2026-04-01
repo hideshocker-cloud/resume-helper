@@ -68,6 +68,55 @@
             white-space: normal;
             word-break: break-word;
         }
+        /* 自定义 tooltip 样式 */
+        .info-icon {
+            position: relative;
+            cursor: help;
+            margin-left: 0.25rem;
+            color: #9ca3af;
+            font-size: 0.875rem;
+            transition: color 0.2s;
+        }
+        .info-icon:hover {
+            color: #4f46e5;
+        }
+        .info-icon .tooltip-text {
+            visibility: hidden;
+            opacity: 0;
+            width: 220px;
+            background-color: #1f2937;
+            color: #fff;
+            text-align: center;
+            border-radius: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            position: absolute;
+            z-index: 10;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.75rem;
+            font-weight: normal;
+            line-height: 1.4;
+            white-space: normal;
+            transition: opacity 0.2s, visibility 0.2s;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            pointer-events: none;
+        }
+        .info-icon:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+        /* 小三角 */
+        .info-icon .tooltip-text::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #1f2937 transparent transparent transparent;
+        }
     </style>
 </head>
 <body class="min-h-screen py-8">
@@ -299,6 +348,19 @@
             return text.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
         }
 
+        // 辅助生成带信息图标的标题
+        function titleWithIcon(text, tooltip) {
+            return `
+                <div class="flex items-center gap-1">
+                    <span>${text}</span>
+                    <span class="info-icon">
+                        <i class="fas fa-info-circle"></i>
+                        <span class="tooltip-text">${tooltip}</span>
+                    </span>
+                </div>
+            `;
+        }
+
         function renderMatchResult(data) {
             const overall = data.overall_match || { score: 0, reason: '' };
             const subs = data.sub_scores || { skills: 0, experience: 0, education: 0 };
@@ -309,6 +371,12 @@
             const deepenItems = opt.deepen.map(d => `<li>${cleanText(d)}</li>`).join('');
             const notMatchItems = opt.not_match.map(n => `<li>${cleanText(n)}</li>`).join('');
             const cardClass = "bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition";
+
+            const keepTooltip = "这些是与岗位高度匹配的经历或技能，建议在简历中保留并突出，如加粗、前置或扩展描述。";
+            const weakenTooltip = "这些内容与岗位关联度低或描述冗长，建议精简或删除，让简历更聚焦核心优势。";
+            const deepenTooltip = "简历中已提及但描述不够充分的能力或项目，建议补充细节（如成果、数据、工具），增强说服力。";
+            const notMatchTooltip = "岗位要求但简历中缺失的能力，建议补充学习或强调可迁移经验，并在求职信中说明快速学习意愿。";
+
             return `
                 <div class="mb-6">
                     <div class="flex flex-wrap items-center justify-between gap-2">
@@ -323,19 +391,19 @@
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                     <div class="${cardClass}">
-                        <h3 class="font-semibold text-green-700" title="这些是与岗位高度匹配的经历或技能，建议在简历中保留并突出，如加粗、前置或扩展描述。">✅ 强匹配</h3>
+                        <h3 class="font-semibold text-green-700">${titleWithIcon("✅ 强匹配", keepTooltip)}</h3>
                         <ul class="mt-2 custom-list">${keepItems || '<li>无</li>'}</ul>
                     </div>
                     <div class="${cardClass}">
-                        <h3 class="font-semibold text-yellow-700" title="这些内容与岗位关联度低或描述冗长，建议精简或删除，让简历更聚焦核心优势。">⚠️ 可弱化</h3>
+                        <h3 class="font-semibold text-yellow-700">${titleWithIcon("⚠️ 可弱化", weakenTooltip)}</h3>
                         <ul class="mt-2 custom-list">${weakenItems || '<li>无</li>'}</ul>
                     </div>
                     <div class="${cardClass}">
-                        <h3 class="font-semibold text-blue-700" title="简历中已提及但描述不够充分的能力或项目，建议补充细节（如成果、数据、工具），增强说服力。">🔍 可深挖</h3>
+                        <h3 class="font-semibold text-blue-700">${titleWithIcon("🔍 可深挖", deepenTooltip)}</h3>
                         <ul class="mt-2 custom-list">${deepenItems || '<li>无</li>'}</ul>
                     </div>
                     <div class="${cardClass}">
-                        <h3 class="font-semibold text-red-700" title="岗位要求但简历中缺失的能力，建议补充学习或强调可迁移经验，并在求职信中说明快速学习意愿。">❌ 不匹配</h3>
+                        <h3 class="font-semibold text-red-700">${titleWithIcon("❌ 不匹配", notMatchTooltip)}</h3>
                         <ul class="mt-2 custom-list">${notMatchItems || '<li>无</li>'}</ul>
                     </div>
                 </div>

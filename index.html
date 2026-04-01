@@ -226,7 +226,6 @@
                 }
                 resumeTextContent = text;
                 resumeTextArea.value = text;   // 同步到文本区
-                // 注意：不清空文件 input，因为当前文件已生效，但允许后续手动输入时清除
             } catch (error) {
                 console.error(error);
                 alert("文件解析失败，请尝试直接粘贴文本");
@@ -323,10 +322,22 @@
                     </div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                    <div class="${cardClass}"><h3 class="font-semibold text-green-700">✅ 强匹配（保留）</h3><ul class="mt-2 custom-list">${keepItems || '<li>无</li>'}</ul></div>
-                    <div class="${cardClass}"><h3 class="font-semibold text-yellow-700">⚠️ 可弱化</h3><ul class="mt-2 custom-list">${weakenItems || '<li>无</li>'}</ul></div>
-                    <div class="${cardClass}"><h3 class="font-semibold text-blue-700">🔍 可深挖</h3><ul class="mt-2 custom-list">${deepenItems || '<li>无</li>'}</ul></div>
-                    <div class="${cardClass}"><h3 class="font-semibold text-red-700">❌ 不匹配</h3><ul class="mt-2 custom-list">${notMatchItems || '<li>无</li>'}</ul></div>
+                    <div class="${cardClass}">
+                        <h3 class="font-semibold text-green-700" title="这些是与岗位高度匹配的经历或技能，建议在简历中保留并突出，如加粗、前置或扩展描述。">✅ 强匹配</h3>
+                        <ul class="mt-2 custom-list">${keepItems || '<li>无</li>'}</ul>
+                    </div>
+                    <div class="${cardClass}">
+                        <h3 class="font-semibold text-yellow-700" title="这些内容与岗位关联度低或描述冗长，建议精简或删除，让简历更聚焦核心优势。">⚠️ 可弱化</h3>
+                        <ul class="mt-2 custom-list">${weakenItems || '<li>无</li>'}</ul>
+                    </div>
+                    <div class="${cardClass}">
+                        <h3 class="font-semibold text-blue-700" title="简历中已提及但描述不够充分的能力或项目，建议补充细节（如成果、数据、工具），增强说服力。">🔍 可深挖</h3>
+                        <ul class="mt-2 custom-list">${deepenItems || '<li>无</li>'}</ul>
+                    </div>
+                    <div class="${cardClass}">
+                        <h3 class="font-semibold text-red-700" title="岗位要求但简历中缺失的能力，建议补充学习或强调可迁移经验，并在求职信中说明快速学习意愿。">❌ 不匹配</h3>
+                        <ul class="mt-2 custom-list">${notMatchItems || '<li>无</li>'}</ul>
+                    </div>
                 </div>
                 <div class="mt-4 p-4 bg-indigo-50 rounded-xl border border-indigo-100">
                     <div class="flex items-start gap-2"><i class="fas fa-lightbulb text-indigo-600 mt-0.5"></i><div><span class="font-semibold text-indigo-800">投递建议：</span> <span class="text-indigo-700">${advice.suggestion}</span><p class="text-gray-700 text-sm mt-1">${advice.reason}</p></div></div>

@@ -4,9 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PIPEI · 智能求职助手</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- PDF 解析 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <!-- Word 解析 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
+    <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap');
@@ -74,6 +78,7 @@
         </div>
 
         <div class="grid md:grid-cols-2 gap-8 mb-8">
+            <!-- 左侧：简历上传 -->
             <div class="bg-white rounded-2xl shadow-lg p-6 card-hover flex flex-col">
                 <h2 class="text-xl font-semibold text-gray-800 mb-4">📄 简历上传</h2>
                 <div class="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-indigo-300 transition mb-4">
@@ -89,6 +94,7 @@
                 </div>
             </div>
 
+            <!-- 右侧：JD输入 -->
             <div class="bg-white rounded-2xl shadow-lg p-6 card-hover flex flex-col">
                 <h2 class="text-xl font-semibold text-gray-800 mb-4">💼 职位描述 (JD)</h2>
                 <div class="flex-1 flex flex-col min-h-0">
@@ -120,6 +126,7 @@
     </div>
 
     <script>
+        // DOM 元素
         const resumeFileInput = document.getElementById('resumeFile');
         const uploadBtn = document.getElementById('uploadBtn');
         const fileNameSpan = document.getElementById('fileName');
@@ -134,7 +141,7 @@
         let translationResult = null;
         let matchResult = null;
         let currentTab = "translate";
-        let isAnalyzing = false;          // 是否正在分析
+        let isAnalyzing = false;
 
         function showLoading() {
             return `<div class="flex justify-center py-12"><div class="loader"></div><span class="ml-3 text-gray-600">分析中，请稍候...</span></div>`;
@@ -158,6 +165,7 @@
             return data;
         }
 
+        // PDF 解析
         function parsePDF(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -183,6 +191,7 @@
             });
         }
 
+        // Word 解析
         function parseDOCX(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -196,6 +205,7 @@
             });
         }
 
+        // 文件上传
         uploadBtn.addEventListener('click', () => resumeFileInput.click());
         resumeFileInput.addEventListener('change', async (e) => {
             const file = e.target.files[0];
@@ -203,19 +213,40 @@
             fileNameSpan.textContent = file.name;
             try {
                 let text = "";
-                if (file.type === "application/pdf") text = await parsePDF(file);
-                else if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") text = await parseDOCX(file);
-                else { alert("不支持的文件类型，请上传 PDF 或 Word 文档"); return; }
+                if (file.type === "application/pdf") {
+                    text = await parsePDF(file);
+                } else if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+                    text = await parseDOCX(file);
+                } else {
+                    alert("不支持的文件类型，请上传 PDF 或 Word 文档");
+                    // 清空文件状态
+                    resumeFileInput.value = '';
+                    fileNameSpan.textContent = "未选择文件";
+                    return;
+                }
                 resumeTextContent = text;
-                resumeTextArea.value = text;
+                resumeTextArea.value = text;   // 同步到文本区
+                // 注意：不清空文件 input，因为当前文件已生效，但允许后续手动输入时清除
             } catch (error) {
                 console.error(error);
                 alert("文件解析失败，请尝试直接粘贴文本");
+                // 解析失败，清空文件状态
+                resumeFileInput.value = '';
+                fileNameSpan.textContent = "未选择文件";
+                resumeTextContent = "";
+                resumeTextArea.value = "";
             }
         });
 
-        resumeTextArea.addEventListener('input', () => { resumeTextContent = resumeTextArea.value; });
+        // 手动输入简历文本（互斥：清空文件上传状态）
+        resumeTextArea.addEventListener('input', () => {
+            // 用户手动修改文本区，则清除文件上传状态
+            resumeFileInput.value = '';
+            fileNameSpan.textContent = "未选择文件";
+            resumeTextContent = resumeTextArea.value;  // 更新全局简历文本
+        });
 
+        // 解析 JD 翻译文本为三个部分
         function parseTranslationToSections(text) {
             let responsibilities = "", requirements = "", plus = "";
             const sections = { "岗位职责": "", "岗位要求": "", "加分项": "" };
@@ -223,12 +254,25 @@
             const lines = text.split('\n');
             for (let line of lines) {
                 const trimmed = line.trim();
-                if (trimmed.includes("岗位职责")) { currentSection = "岗位职责"; continue; }
-                else if (trimmed.includes("岗位要求")) { currentSection = "岗位要求"; continue; }
-                else if (trimmed.includes("加分项")) { currentSection = "加分项"; continue; }
-                if (currentSection && trimmed) sections[currentSection] += trimmed + "\n";
+                if (trimmed.includes("岗位职责")) {
+                    currentSection = "岗位职责";
+                    continue;
+                } else if (trimmed.includes("岗位要求")) {
+                    currentSection = "岗位要求";
+                    continue;
+                } else if (trimmed.includes("加分项")) {
+                    currentSection = "加分项";
+                    continue;
+                }
+                if (currentSection && trimmed) {
+                    sections[currentSection] += trimmed + "\n";
+                }
             }
-            return { responsibilities: sections["岗位职责"].trim(), requirements: sections["岗位要求"].trim(), plus: sections["加分项"].trim() };
+            return {
+                responsibilities: sections["岗位职责"].trim(),
+                requirements: sections["岗位要求"].trim(),
+                plus: sections["加分项"].trim()
+            };
         }
 
         function renderTranslation(text) {
@@ -252,7 +296,9 @@
             `;
         }
 
-        function cleanText(text) { return text.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim(); }
+        function cleanText(text) {
+            return text.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+        }
 
         function renderMatchResult(data) {
             const overall = data.overall_match || { score: 0, reason: '' };
@@ -325,8 +371,14 @@
 
         analyzeBtn.addEventListener('click', async () => {
             const jd = jdTextArea.value.trim();
-            if (!jd) { alert("请粘贴职位描述"); return; }
-            if (!resumeTextContent) { alert("请先上传简历或粘贴简历文本"); return; }
+            if (!jd) {
+                alert("请粘贴职位描述");
+                return;
+            }
+            if (!resumeTextContent) {
+                alert("请先上传简历或粘贴简历文本");
+                return;
+            }
 
             // 开始分析：清空结果，标记分析中，刷新显示
             translationResult = null;
@@ -335,7 +387,10 @@
             updateResultDisplay();
 
             try {
-                const result = await callDifyAPI({ jd_text: jd, resume_text: resumeTextContent });
+                const result = await callDifyAPI({
+                    jd_text: jd,
+                    resume_text: resumeTextContent
+                });
                 translationResult = result.data.outputs.translation;
                 const analysisRaw = result.data.outputs.analysis;
                 try {

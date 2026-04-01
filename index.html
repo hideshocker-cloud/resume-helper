@@ -4,13 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PIPEI · 智能求职助手</title>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- PDF 解析 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-    <!-- Word 解析 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
-    <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap');
@@ -59,7 +55,6 @@
             flex: 1;
             min-height: 0;
         }
-        /* 修正 bullet point 位置 */
         .custom-list {
             list-style-type: disc;
             padding-left: 1.25rem;
@@ -73,17 +68,12 @@
 </head>
 <body class="min-h-screen py-8">
     <div class="container mx-auto px-4 max-w-6xl">
-        <!-- 头部 -->
         <div class="text-center mb-10">
-            <h1 class="text-5xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                PIPEI
-            </h1>
+            <h1 class="text-5xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">PIPEI</h1>
             <p class="text-gray-600 mt-2 text-lg">上传简历 · 粘贴JD · 智能分析与匹配</p>
         </div>
 
-        <!-- 左右两栏 -->
         <div class="grid md:grid-cols-2 gap-8 mb-8">
-            <!-- 左侧：简历上传 -->
             <div class="bg-white rounded-2xl shadow-lg p-6 card-hover flex flex-col">
                 <h2 class="text-xl font-semibold text-gray-800 mb-4">📄 简历上传</h2>
                 <div class="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-indigo-300 transition mb-4">
@@ -99,7 +89,6 @@
                 </div>
             </div>
 
-            <!-- 右侧：JD输入 -->
             <div class="bg-white rounded-2xl shadow-lg p-6 card-hover flex flex-col">
                 <h2 class="text-xl font-semibold text-gray-800 mb-4">💼 职位描述 (JD)</h2>
                 <div class="flex-1 flex flex-col min-h-0">
@@ -108,14 +97,12 @@
             </div>
         </div>
 
-        <!-- 开始分析按钮（居中） -->
         <div class="flex justify-center mb-8">
             <button id="analyzeBtn" class="bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-semibold py-3 px-10 rounded-xl shadow-lg transition transform hover:scale-105 flex items-center gap-2">
                 <i class="fas fa-chart-line"></i> 开始分析
             </button>
         </div>
 
-        <!-- 结果展示区（带选项卡） -->
         <div class="bg-white rounded-2xl shadow-xl p-6 card-hover">
             <div class="border-b border-gray-200">
                 <nav class="flex gap-6">
@@ -133,7 +120,6 @@
     </div>
 
     <script>
-        // DOM 元素
         const resumeFileInput = document.getElementById('resumeFile');
         const uploadBtn = document.getElementById('uploadBtn');
         const fileNameSpan = document.getElementById('fileName');
@@ -145,16 +131,17 @@
         const resultContainer = document.getElementById('resultContainer');
 
         let resumeTextContent = "";
-        let translationResult = "";
+        let translationResult = null;
         let matchResult = null;
         let currentTab = "translate";
+        let isAnalyzing = false;          // 是否正在分析
 
         function showLoading() {
-            resultContainer.innerHTML = `<div class="flex justify-center py-12"><div class="loader"></div><span class="ml-3 text-gray-600">分析中，请稍候...</span></div>`;
+            return `<div class="flex justify-center py-12"><div class="loader"></div><span class="ml-3 text-gray-600">分析中，请稍候...</span></div>`;
         }
 
         function showError(message) {
-            resultContainer.innerHTML = `<div class="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg flex items-center gap-2"><i class="fas fa-exclamation-triangle"></i> ${message}</div>`;
+            return `<div class="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg flex items-center gap-2"><i class="fas fa-exclamation-triangle"></i> ${message}</div>`;
         }
 
         async function callDifyAPI(inputs) {
@@ -179,16 +166,12 @@
                     pdfjsLib.getDocument(typedarray).promise.then(pdf => {
                         let fullText = "";
                         const pages = [];
-                        for (let i = 1; i <= pdf.numPages; i++) {
-                            pages.push(pdf.getPage(i));
-                        }
+                        for (let i = 1; i <= pdf.numPages; i++) pages.push(pdf.getPage(i));
                         Promise.all(pages).then(pages => {
                             let pagePromises = pages.map(page => page.getTextContent());
                             Promise.all(pagePromises).then(textContents => {
                                 textContents.forEach(textContent => {
-                                    textContent.items.forEach(item => {
-                                        fullText += item.str + " ";
-                                    });
+                                    textContent.items.forEach(item => { fullText += item.str + " "; });
                                 });
                                 resolve(fullText.trim());
                             }).catch(reject);
@@ -220,14 +203,9 @@
             fileNameSpan.textContent = file.name;
             try {
                 let text = "";
-                if (file.type === "application/pdf") {
-                    text = await parsePDF(file);
-                } else if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
-                    text = await parseDOCX(file);
-                } else {
-                    alert("不支持的文件类型，请上传 PDF 或 Word 文档");
-                    return;
-                }
+                if (file.type === "application/pdf") text = await parsePDF(file);
+                else if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") text = await parseDOCX(file);
+                else { alert("不支持的文件类型，请上传 PDF 或 Word 文档"); return; }
                 resumeTextContent = text;
                 resumeTextArea.value = text;
             } catch (error) {
@@ -236,9 +214,7 @@
             }
         });
 
-        resumeTextArea.addEventListener('input', () => {
-            resumeTextContent = resumeTextArea.value;
-        });
+        resumeTextArea.addEventListener('input', () => { resumeTextContent = resumeTextArea.value; });
 
         function parseTranslationToSections(text) {
             let responsibilities = "", requirements = "", plus = "";
@@ -247,24 +223,12 @@
             const lines = text.split('\n');
             for (let line of lines) {
                 const trimmed = line.trim();
-                if (trimmed.includes("岗位职责")) {
-                    currentSection = "岗位职责";
-                    continue;
-                } else if (trimmed.includes("岗位要求")) {
-                    currentSection = "岗位要求";
-                    continue;
-                } else if (trimmed.includes("加分项")) {
-                    currentSection = "加分项";
-                    continue;
-                }
-                if (currentSection && trimmed) {
-                    sections[currentSection] += trimmed + "\n";
-                }
+                if (trimmed.includes("岗位职责")) { currentSection = "岗位职责"; continue; }
+                else if (trimmed.includes("岗位要求")) { currentSection = "岗位要求"; continue; }
+                else if (trimmed.includes("加分项")) { currentSection = "加分项"; continue; }
+                if (currentSection && trimmed) sections[currentSection] += trimmed + "\n";
             }
-            responsibilities = sections["岗位职责"].trim();
-            requirements = sections["岗位要求"].trim();
-            plus = sections["加分项"].trim();
-            return { responsibilities, requirements, plus };
+            return { responsibilities: sections["岗位职责"].trim(), requirements: sections["岗位要求"].trim(), plus: sections["加分项"].trim() };
         }
 
         function renderTranslation(text) {
@@ -273,49 +237,33 @@
             return `
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div class="${cardClass}">
-                        <div class="flex items-center gap-2 mb-3 border-b pb-2">
-                            <i class="fas fa-tasks text-indigo-500"></i>
-                            <h3 class="font-semibold text-gray-800">岗位职责</h3>
-                        </div>
+                        <div class="flex items-center gap-2 mb-3 border-b pb-2"><i class="fas fa-tasks text-indigo-500"></i><h3 class="font-semibold text-gray-800">岗位职责</h3></div>
                         <div class="text-sm text-gray-700 whitespace-pre-wrap">${responsibilities ? responsibilities.replace(/\n/g, '<br>') : '<span class="text-gray-400 italic">无</span>'}</div>
                     </div>
                     <div class="${cardClass}">
-                        <div class="flex items-center gap-2 mb-3 border-b pb-2">
-                            <i class="fas fa-clipboard-list text-indigo-500"></i>
-                            <h3 class="font-semibold text-gray-800">岗位要求</h3>
-                        </div>
+                        <div class="flex items-center gap-2 mb-3 border-b pb-2"><i class="fas fa-clipboard-list text-indigo-500"></i><h3 class="font-semibold text-gray-800">岗位要求</h3></div>
                         <div class="text-sm text-gray-700 whitespace-pre-wrap">${requirements ? requirements.replace(/\n/g, '<br>') : '<span class="text-gray-400 italic">无</span>'}</div>
                     </div>
                     <div class="${cardClass}">
-                        <div class="flex items-center gap-2 mb-3 border-b pb-2">
-                            <i class="fas fa-star text-indigo-500"></i>
-                            <h3 class="font-semibold text-gray-800">加分项</h3>
-                        </div>
+                        <div class="flex items-center gap-2 mb-3 border-b pb-2"><i class="fas fa-star text-indigo-500"></i><h3 class="font-semibold text-gray-800">加分项</h3></div>
                         <div class="text-sm text-gray-700 whitespace-pre-wrap">${plus ? plus.replace(/\n/g, '<br>') : '<span class="text-gray-400 italic">无</span>'}</div>
                     </div>
                 </div>
             `;
         }
 
-        // 辅助函数：清理列表项中的换行符，确保单行显示
-        function cleanText(text) {
-            return text.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
-        }
+        function cleanText(text) { return text.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim(); }
 
         function renderMatchResult(data) {
             const overall = data.overall_match || { score: 0, reason: '' };
             const subs = data.sub_scores || { skills: 0, experience: 0, education: 0 };
             const opt = data.optimization || { keep: [], weaken: [], deepen: [], not_match: [] };
             const advice = data.application_advice || { suggestion: '', reason: '' };
-
-            // 清理列表项中的换行符，避免影响布局
             const keepItems = opt.keep.map(k => `<li>${cleanText(k)}</li>`).join('');
             const weakenItems = opt.weaken.map(w => `<li>${cleanText(w)}</li>`).join('');
             const deepenItems = opt.deepen.map(d => `<li>${cleanText(d)}</li>`).join('');
             const notMatchItems = opt.not_match.map(n => `<li>${cleanText(n)}</li>`).join('');
-
             const cardClass = "bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition";
-
             return `
                 <div class="mb-6">
                     <div class="flex flex-wrap items-center justify-between gap-2">
@@ -328,53 +276,31 @@
                         <span><i class="fas fa-graduation-cap mr-1"></i>教育匹配: ${subs.education}%</span>
                     </div>
                 </div>
-
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                    <div class="${cardClass}">
-                        <h3 class="font-semibold text-green-700">✅ 强匹配（保留）</h3>
-                        <ul class="mt-2 custom-list">${keepItems || '<li>无</li>'}</ul>
-                    </div>
-                    <div class="${cardClass}">
-                        <h3 class="font-semibold text-yellow-700">⚠️ 可弱化</h3>
-                        <ul class="mt-2 custom-list">${weakenItems || '<li>无</li>'}</ul>
-                    </div>
-                    <div class="${cardClass}">
-                        <h3 class="font-semibold text-blue-700">🔍 可深挖</h3>
-                        <ul class="mt-2 custom-list">${deepenItems || '<li>无</li>'}</ul>
-                    </div>
-                    <div class="${cardClass}">
-                        <h3 class="font-semibold text-red-700">❌ 不匹配</h3>
-                        <ul class="mt-2 custom-list">${notMatchItems || '<li>无</li>'}</ul>
-                    </div>
+                    <div class="${cardClass}"><h3 class="font-semibold text-green-700">✅ 强匹配（保留）</h3><ul class="mt-2 custom-list">${keepItems || '<li>无</li>'}</ul></div>
+                    <div class="${cardClass}"><h3 class="font-semibold text-yellow-700">⚠️ 可弱化</h3><ul class="mt-2 custom-list">${weakenItems || '<li>无</li>'}</ul></div>
+                    <div class="${cardClass}"><h3 class="font-semibold text-blue-700">🔍 可深挖</h3><ul class="mt-2 custom-list">${deepenItems || '<li>无</li>'}</ul></div>
+                    <div class="${cardClass}"><h3 class="font-semibold text-red-700">❌ 不匹配</h3><ul class="mt-2 custom-list">${notMatchItems || '<li>无</li>'}</ul></div>
                 </div>
-
                 <div class="mt-4 p-4 bg-indigo-50 rounded-xl border border-indigo-100">
-                    <div class="flex items-start gap-2">
-                        <i class="fas fa-lightbulb text-indigo-600 mt-0.5"></i>
-                        <div>
-                            <span class="font-semibold text-indigo-800">投递建议：</span>
-                            <span class="text-indigo-700">${advice.suggestion}</span>
-                            <p class="text-gray-700 text-sm mt-1">${advice.reason}</p>
-                        </div>
-                    </div>
+                    <div class="flex items-start gap-2"><i class="fas fa-lightbulb text-indigo-600 mt-0.5"></i><div><span class="font-semibold text-indigo-800">投递建议：</span> <span class="text-indigo-700">${advice.suggestion}</span><p class="text-gray-700 text-sm mt-1">${advice.reason}</p></div></div>
                 </div>
             `;
         }
 
-        function switchTab(tab) {
-            currentTab = tab;
-            if (tab === 'translate') {
-                tabTranslateBtn.className = "py-2 px-1 text-indigo-600 border-b-2 border-indigo-600 font-medium";
-                tabMatchBtn.className = "py-2 px-1 text-gray-500 hover:text-gray-700";
-                if (translationResult) {
+        function updateResultDisplay() {
+            if (currentTab === 'translate') {
+                if (isAnalyzing) {
+                    resultContainer.innerHTML = showLoading();
+                } else if (translationResult) {
                     resultContainer.innerHTML = renderTranslation(translationResult);
                 } else {
                     resultContainer.innerHTML = '<div class="text-gray-400 text-center py-12 flex flex-col items-center gap-2"><i class="fas fa-file-alt text-4xl opacity-30"></i><p>暂无JD分析结果，请点击「开始分析」</p></div>';
                 }
             } else {
-                tabMatchBtn.className = "py-2 px-1 text-indigo-600 border-b-2 border-indigo-600 font-medium";
-                tabTranslateBtn.className = "py-2 px-1 text-gray-500 hover:text-gray-700";
-                if (matchResult) {
+                if (isAnalyzing) {
+                    resultContainer.innerHTML = showLoading();
+                } else if (matchResult) {
                     resultContainer.innerHTML = renderMatchResult(matchResult);
                 } else {
                     resultContainer.innerHTML = '<div class="text-gray-400 text-center py-12 flex flex-col items-center gap-2"><i class="fas fa-chart-line text-4xl opacity-30"></i><p>暂无匹配结果，请点击「开始分析」</p></div>';
@@ -382,26 +308,34 @@
             }
         }
 
+        function switchTab(tab) {
+            currentTab = tab;
+            if (tab === 'translate') {
+                tabTranslateBtn.className = "py-2 px-1 text-indigo-600 border-b-2 border-indigo-600 font-medium";
+                tabMatchBtn.className = "py-2 px-1 text-gray-500 hover:text-gray-700";
+            } else {
+                tabMatchBtn.className = "py-2 px-1 text-indigo-600 border-b-2 border-indigo-600 font-medium";
+                tabTranslateBtn.className = "py-2 px-1 text-gray-500 hover:text-gray-700";
+            }
+            updateResultDisplay();
+        }
+
         tabTranslateBtn.addEventListener('click', () => switchTab('translate'));
         tabMatchBtn.addEventListener('click', () => switchTab('match'));
 
         analyzeBtn.addEventListener('click', async () => {
             const jd = jdTextArea.value.trim();
-            if (!jd) {
-                showError("请粘贴职位描述");
-                return;
-            }
-            if (!resumeTextContent) {
-                showError("请先上传简历或粘贴简历文本");
-                return;
-            }
+            if (!jd) { alert("请粘贴职位描述"); return; }
+            if (!resumeTextContent) { alert("请先上传简历或粘贴简历文本"); return; }
 
-            showLoading();
+            // 开始分析：清空结果，标记分析中，刷新显示
+            translationResult = null;
+            matchResult = null;
+            isAnalyzing = true;
+            updateResultDisplay();
+
             try {
-                const result = await callDifyAPI({
-                    jd_text: jd,
-                    resume_text: resumeTextContent
-                });
+                const result = await callDifyAPI({ jd_text: jd, resume_text: resumeTextContent });
                 translationResult = result.data.outputs.translation;
                 const analysisRaw = result.data.outputs.analysis;
                 try {
@@ -410,11 +344,14 @@
                     console.warn("匹配结果不是 JSON，原样显示");
                     matchResult = null;
                     resultContainer.innerHTML = `<div class="bg-yellow-50 p-4 rounded-lg">匹配结果格式异常，原始内容：<pre>${analysisRaw}</pre></div>`;
+                    isAnalyzing = false;
                     return;
                 }
-                switchTab('translate');
+                isAnalyzing = false;
+                updateResultDisplay();
             } catch (err) {
-                showError(err.message);
+                isAnalyzing = false;
+                resultContainer.innerHTML = showError(err.message);
             }
         });
     </script>

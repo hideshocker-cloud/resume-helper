@@ -65,13 +65,13 @@
             font-weight: 600;
             margin-bottom: 0.75rem;
         }
+        /* 修正圆点位置：左对齐，点在文字左侧 */
         .custom-list-item {
             display: flex;
             align-items: baseline;
             gap: 0.5rem;
             margin-bottom: 0.5rem;
             line-height: 1.4;
-            justify-content: flex-start;
             text-align: left;
         }
         .custom-list-item::before {
@@ -79,8 +79,6 @@
             font-weight: bold;
             color: currentColor;
             flex-shrink: 0;
-            order: 1;
-            margin-right: 0.5rem;
         }
         button:focus-visible { outline: 2px solid #4f46e5; outline-offset: 2px; }
         @media (max-width: 768px) { .container { padding-left: 1rem; padding-right: 1rem; } }
@@ -453,7 +451,6 @@
                 return;
             }
             const prefStr = modalPrefs.join(',');
-            // 在模态框中央显示 loading
             modalQuestions.innerHTML = '<div class="flex justify-center py-12"><div class="loader"></div><span class="ml-3 text-gray-500">分析中，请稍候...</span></div>';
             modalResultDiv.innerHTML = "";
             try {
@@ -484,7 +481,6 @@
                 recommendResultDiv.innerHTML = renderJobsWithBest(data);
                 closeModal();
             } catch (err) {
-                // 恢复问题界面
                 let errHtml = "";
                 for (let i = 0; i < questions.length; i++) {
                     errHtml += `<div class="mb-5">
@@ -519,7 +515,7 @@
         submitPreferencesBtn.addEventListener('click', submitPreferences);
         window.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
 
-        // JD 分析渲染（左对齐）
+        // JD 分析渲染
         function renderTranslation(text) {
             const sections = { "岗位职责": "", "岗位要求": "", "加分项": "" };
             let current = null;
@@ -547,7 +543,7 @@
                     </div>`;
         }
 
-        // 智能匹配渲染（全部左对齐）
+        // 智能匹配渲染（左对齐，圆点正常）
         function renderMatch(data) {
             const overall = data.overall_match || { score: 0, reason: '' };
             const subs = data.sub_scores || { skills: 0, experience: 0, education: 0 };

@@ -4,134 +4,121 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>PIPEI · 智能求职助手</title>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- PDF 解析 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-    <!-- Word 解析 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap');
         body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #f0f9ff 0%, #e6f0fa 100%); }
         .card-hover { transition: transform 0.2s ease, box-shadow 0.2s ease; }
         .card-hover:hover { transform: translateY(-2px); box-shadow: 0 12px 24px -8px rgba(0,0,0,0.1); }
         .loader { border: 4px solid #f3f3f3; border-top: 4px solid #4f46e5; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .tab-active { border-bottom-width: 2px; border-color: #4f46e5; color: #4f46e5; }
-        .tab-inactive { border-bottom-width: 2px; border-color: transparent; color: #6b7280; }
-        .tab-inactive:hover { color: #1f2937; }
-        .textarea-grow { flex: 1; min-height: 0; }
-        .custom-list { list-style-type: disc; padding-left: 1.25rem; }
-        .custom-list li { margin-bottom: 0.25rem; white-space: normal; word-break: break-word; }
-        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-        .modal-container { background: white; border-radius: 1.5rem; max-width: 600px; width: 90%; max-height: 85vh; overflow-y: auto; padding: 1.5rem; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
-        .question-item { margin-bottom: 1.25rem; }
+        .mode-btn-active { background-color: #4f46e5; color: white; box-shadow: 0 2px 8px rgba(79,70,229,0.3); }
+        .mode-btn-inactive { background-color: #f3f4f6; color: #4b5563; }
+        .keyword-tag { display: inline-block; background: #e0e7ff; color: #3730a3; border-radius: 9999px; padding: 0.2rem 0.7rem; font-size: 0.75rem; margin: 0.2rem; }
+        .best-match-highlight { border: 2px solid #f59e0b; background: #fffbeb; }
+        .question-item { margin-bottom: 1rem; }
         .question-text { font-weight: 500; margin-bottom: 0.5rem; color: #1f2937; }
-        .option-group { display: flex; flex-wrap: wrap; gap: 1rem; }
+        .option-group { display: flex; flex-wrap: wrap; gap: 0.75rem; }
         .option-label { display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; background: #f3f4f6; padding: 0.5rem 1rem; border-radius: 2rem; transition: all 0.2s; }
         .option-label.selected { background: #4f46e5; color: white; }
-        .keyword-tag { display: inline-block; background: #e0e7ff; color: #3730a3; border-radius: 9999px; padding: 0.2rem 0.7rem; font-size: 0.75rem; margin: 0.2rem; }
-        .best-match-highlight { border: 2px solid #f59e0b; background: #fffbeb; transition: all 0.3s; }
     </style>
 </head>
 <body class="min-h-screen py-8">
-    <div class="container mx-auto px-4 max-w-6xl">
-        <div class="text-center mb-8">
+    <div class="container mx-auto px-4 max-w-5xl">
+        <!-- 头部 -->
+        <div class="text-center mb-6">
             <h1 class="text-5xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">PIPEI</h1>
-            <p class="text-gray-600 mt-2 text-lg">上传简历 · 粘贴JD · 智能分析与匹配</p>
+            <p class="text-gray-600 mt-1">上传简历 · 精准求职</p>
         </div>
 
-        <div class="grid md:grid-cols-2 gap-8 mb-8">
-            <div class="bg-white rounded-2xl shadow-lg p-6 card-hover flex flex-col">
-                <h2 class="text-xl font-semibold text-gray-800 mb-4">📄 简历上传</h2>
-                <div class="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-indigo-300 transition mb-4">
-                    <input type="file" id="resumeFile" accept=".pdf,.docx" class="hidden" />
-                    <button id="uploadBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg transition shadow-sm">
-                        <i class="fas fa-cloud-upload-alt mr-2"></i>选择文件 (PDF/Word)
-                    </button>
-                    <p id="fileName" class="text-sm text-gray-500 mt-2">未选择文件</p>
-                </div>
-                <div class="flex-1 flex flex-col min-h-0">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">或直接粘贴简历文本</label>
-                    <textarea id="resumeText" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500 textarea-grow" placeholder="将简历文本粘贴在这里..."></textarea>
-                </div>
+        <!-- 简历上传（全局） -->
+        <div class="bg-white rounded-2xl shadow-lg p-5 mb-6">
+            <h2 class="text-lg font-semibold text-gray-800 mb-3">📄 简历上传</h2>
+            <div class="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:border-indigo-300 transition mb-3">
+                <input type="file" id="resumeFile" accept=".pdf,.docx" class="hidden" />
+                <button id="uploadBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg transition">
+                    <i class="fas fa-cloud-upload-alt mr-2"></i>选择文件 (PDF/Word)
+                </button>
+                <p id="fileName" class="text-sm text-gray-500 mt-2">未选择文件</p>
             </div>
-            <div class="bg-white rounded-2xl shadow-lg p-6 card-hover flex flex-col">
-                <h2 class="text-xl font-semibold text-gray-800 mb-4">💼 职位描述 (JD)</h2>
-                <div class="flex-1 flex flex-col min-h-0">
-                    <textarea id="jdText" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500 textarea-grow" placeholder="请粘贴职位描述..."></textarea>
-                </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">或直接粘贴简历文本</label>
+                <textarea id="resumeText" rows="4" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="将简历文本粘贴在这里..."></textarea>
             </div>
         </div>
 
-        <div class="flex justify-center mb-8">
-            <button id="analyzeBtn" class="bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-semibold py-3 px-10 rounded-xl shadow-lg transition transform hover:scale-105 flex items-center gap-2">
-                <i class="fas fa-chart-line"></i> 开始分析
+        <!-- 模式切换 -->
+        <div class="flex gap-4 mb-6 justify-center">
+            <button id="modeRecommendBtn" class="mode-btn-active px-6 py-2 rounded-full font-medium transition flex items-center gap-2">
+                <i class="fas fa-magic"></i> ✨ 岗位推荐
+            </button>
+            <button id="modeAnalyzeBtn" class="mode-btn-inactive px-6 py-2 rounded-full font-medium transition flex items-center gap-2">
+                <i class="fas fa-chart-line"></i> 📋 岗位分析
             </button>
         </div>
 
-        <div class="bg-white rounded-2xl shadow-xl p-6 card-hover">
-            <div class="border-b border-gray-200">
-                <nav class="flex gap-6 flex-wrap">
-                    <button id="tabTranslate" class="py-2 px-1 text-indigo-600 border-b-2 border-indigo-600 font-medium">📖 JD分析</button>
-                    <button id="tabMatch" class="py-2 px-1 text-gray-500 hover:text-gray-700">🎯 智能匹配</button>
-                    <button id="tabRecommend" class="py-2 px-1 text-gray-500 hover:text-gray-700">✨ 岗位推荐</button>
-                </nav>
-            </div>
-            <div id="resultContainer" class="mt-6">
-                <div class="text-gray-400 text-center py-12 flex flex-col items-center gap-2">
-                    <i class="fas fa-lightbulb text-4xl opacity-30"></i>
-                    <p>点击「开始分析」或「岗位推荐」按钮查看结果</p>
-                </div>
-            </div>
+        <!-- 动态内容区域 -->
+        <div id="dynamicContent" class="bg-white rounded-2xl shadow-xl p-6">
+            <!-- 岗位推荐模式的 HTML 会动态填充，但为了简单，我们直接写两个模块用 JS 控制显示隐藏 -->
         </div>
     </div>
 
-    <div id="soulMatchModal" class="modal-overlay hidden" style="display: none;">
-        <div class="modal-container">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-bold text-gray-800">🔮 灵魂匹配</h2>
-                <button id="closeModalBtn" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
-            </div>
+    <!-- 岗位推荐模式的内容 -->
+    <div id="recommendPanel" class="hidden">
+        <div class="mb-4 flex justify-between items-center">
+            <span class="text-gray-700">🌐 输出语言：</span>
+            <select id="langSelect" class="border rounded-lg px-3 py-1 text-sm">
+                <option value="zh">中文</option>
+                <option value="en">English</option>
+                <option value="fr">Français</option>
+            </select>
+        </div>
+        <div class="mb-4 border-t pt-3">
+            <h3 class="font-semibold text-gray-800 mb-3">📋 偏好设置（必答）</h3>
             <div id="questionsContainer"></div>
-            <div class="mt-6 flex justify-end gap-3">
-                <button id="cancelModalBtn" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700">取消</button>
-                <button id="submitPreferencesBtn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">分析</button>
+        </div>
+        <div class="flex justify-center mb-6">
+            <button id="startRecommendBtn" class="bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold py-2 px-8 rounded-full shadow-lg disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                🔮 开始推荐
+            </button>
+        </div>
+        <div id="recommendResult" class="mt-4"></div>
+    </div>
+
+    <!-- 岗位分析模式的内容 -->
+    <div id="analyzePanel" class="hidden">
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-1">💼 职位描述 (JD)</label>
+            <textarea id="jdText" rows="6" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="请粘贴职位描述..."></textarea>
+        </div>
+        <div class="flex justify-center mb-6">
+            <button id="startAnalyzeBtn" class="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-semibold py-2 px-8 rounded-full shadow-lg">
+                <i class="fas fa-chart-line mr-1"></i> 开始分析
+            </button>
+        </div>
+        <div id="analyzeResult" class="mt-4">
+            <div class="border-b border-gray-200 flex gap-4 mb-3">
+                <button id="tabTranslateResult" class="py-1 px-2 text-indigo-600 border-b-2 border-indigo-600">JD分析</button>
+                <button id="tabMatchResult" class="py-1 px-2 text-gray-500">智能匹配</button>
             </div>
-            <div id="modalResult" class="mt-4"></div>
+            <div id="analyzeResultContent" class="text-gray-500 text-center py-8">点击「开始分析」查看结果</div>
         </div>
     </div>
 
     <script>
-        // DOM 元素
-        const resumeFileInput = document.getElementById('resumeFile');
-        const uploadBtn = document.getElementById('uploadBtn');
-        const fileNameSpan = document.getElementById('fileName');
-        const resumeTextArea = document.getElementById('resumeText');
-        const jdTextArea = document.getElementById('jdText');
-        const analyzeBtn = document.getElementById('analyzeBtn');
-        const tabTranslateBtn = document.getElementById('tabTranslate');
-        const tabMatchBtn = document.getElementById('tabMatch');
-        const tabRecommendBtn = document.getElementById('tabRecommend');
-        const resultContainer = document.getElementById('resultContainer');
-        const modal = document.getElementById('soulMatchModal');
-        const questionsContainer = document.getElementById('questionsContainer');
-        const closeModalBtn = document.getElementById('closeModalBtn');
-        const cancelModalBtn = document.getElementById('cancelModalBtn');
-        const submitPreferencesBtn = document.getElementById('submitPreferencesBtn');
-        const modalResultDiv = document.getElementById('modalResult');
-
+        // ---------- 全局变量 ----------
         let resumeTextContent = "";
         let translationResult = null;
         let matchResult = null;
-        let currentTab = "translate";
-        let isAnalyzing = false;
+        let currentMode = "recommend"; // "recommend" or "analyze"
         let currentRecommendLanguage = "zh";
-        let currentRecommendJobs = null;
-        let recommendLoading = false;
         let userPreferences = ["", "", "", "", "", ""];
+        let recommendResultData = null;
+        let analyzeResultData = { translation: null, match: null };
+
+        // 选择题库
         const questions = [
             "你更喜欢的工作节奏是？",
             "在团队中你通常扮演什么角色？",
@@ -157,76 +144,57 @@
             ["A", "B"]
         ];
 
+        // DOM 元素
+        const resumeFileInput = document.getElementById('resumeFile');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const fileNameSpan = document.getElementById('fileName');
+        const resumeTextArea = document.getElementById('resumeText');
+        const modeRecommendBtn = document.getElementById('modeRecommendBtn');
+        const modeAnalyzeBtn = document.getElementById('modeAnalyzeBtn');
+        const dynamicContent = document.getElementById('dynamicContent');
+        const recommendPanel = document.getElementById('recommendPanel');
+        const analyzePanel = document.getElementById('analyzePanel');
+        const questionsContainer = document.getElementById('questionsContainer');
+        const startRecommendBtn = document.getElementById('startRecommendBtn');
+        const recommendResultDiv = document.getElementById('recommendResult');
+        const langSelect = document.getElementById('langSelect');
+        const jdTextArea = document.getElementById('jdText');
+        const startAnalyzeBtn = document.getElementById('startAnalyzeBtn');
+        const analyzeResultContent = document.getElementById('analyzeResultContent');
+        const tabTranslateResult = document.getElementById('tabTranslateResult');
+        const tabMatchResult = document.getElementById('tabMatchResult');
+
+        // 辅助函数
         function showLoading() {
-            return `<div class="flex justify-center py-12"><div class="loader"></div><span class="ml-3 text-gray-600">分析中，请稍候...</span></div>`;
+            return `<div class="flex justify-center py-8"><div class="loader"></div><span class="ml-3 text-gray-600">分析中，请稍候...</span></div>`;
         }
-        function showError(message) {
-            return `<div class="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg flex items-center gap-2"><i class="fas fa-exclamation-triangle"></i> ${message}</div>`;
+        function showError(msg) {
+            return `<div class="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg">${msg}</div>`;
         }
 
+        // API 调用
         async function callPIPEI(inputs) {
             const response = await fetch('/api/dify', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ inputs })
             });
-            if (!response.ok) {
-                const text = await response.text();
-                throw new Error(`API 调用失败: ${response.status} ${text}`);
-            }
+            if (!response.ok) throw new Error(`API 调用失败: ${response.status}`);
             return response.json();
         }
-
         async function callJobRecommender(inputs) {
             const response = await fetch('/api/job-recommender', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ inputs })
             });
-            if (!response.ok) {
-                const text = await response.text();
-                throw new Error(`岗位推荐失败: ${response.status} ${text}`);
-            }
+            if (!response.ok) throw new Error(`岗位推荐失败: ${response.status}`);
             return response.json();
         }
 
-        function parsePDF(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const typedarray = new Uint8Array(e.target.result);
-                    pdfjsLib.getDocument(typedarray).promise.then(pdf => {
-                        let fullText = "";
-                        const pages = [];
-                        for (let i = 1; i <= pdf.numPages; i++) pages.push(pdf.getPage(i));
-                        Promise.all(pages).then(pages => {
-                            let pagePromises = pages.map(page => page.getTextContent());
-                            Promise.all(pagePromises).then(textContents => {
-                                textContents.forEach(textContent => {
-                                    textContent.items.forEach(item => { fullText += item.str + " "; });
-                                });
-                                resolve(fullText.trim());
-                            }).catch(reject);
-                        }).catch(reject);
-                    }).catch(reject);
-                };
-                reader.onerror = reject;
-                reader.readAsArrayBuffer(file);
-            });
-        }
-
-        function parseDOCX(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    mammoth.extractRawText({ arrayBuffer: e.target.result })
-                        .then(result => resolve(result.value))
-                        .catch(reject);
-                };
-                reader.onerror = reject;
-                reader.readAsArrayBuffer(file);
-            });
-        }
+        // PDF/Word 解析（复用）
+        function parsePDF(file) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = e => { const typedarray = new Uint8Array(e.target.result); pdfjsLib.getDocument(typedarray).promise.then(pdf => { let fullText = ""; const pages = []; for (let i = 1; i <= pdf.numPages; i++) pages.push(pdf.getPage(i)); Promise.all(pages).then(pages => { let pagePromises = pages.map(page => page.getTextContent()); Promise.all(pagePromises).then(textContents => { textContents.forEach(textContent => { textContent.items.forEach(item => { fullText += item.str + " "; }); }); resolve(fullText.trim()); }).catch(reject); }).catch(reject); }).catch(reject); }; reader.onerror = reject; reader.readAsArrayBuffer(file); }); }
+        function parseDOCX(file) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = e => { mammoth.extractRawText({ arrayBuffer: e.target.result }).then(result => resolve(result.value)).catch(reject); }; reader.onerror = reject; reader.readAsArrayBuffer(file); }); }
 
         uploadBtn.addEventListener('click', () => resumeFileInput.click());
         resumeFileInput.addEventListener('change', async (e) => {
@@ -244,92 +212,18 @@
         });
         resumeTextArea.addEventListener('input', () => { resumeTextContent = resumeTextArea.value; });
 
-        function parseTranslationToSections(text) {
-            let responsibilities = "", requirements = "", plus = "";
-            const sections = { "岗位职责": "", "岗位要求": "", "加分项": "" };
-            let currentSection = null;
-            const lines = text.split('\n');
-            for (let line of lines) {
-                const trimmed = line.trim();
-                if (trimmed.includes("岗位职责")) {
-                    currentSection = "岗位职责";
-                    continue;
-                } else if (trimmed.includes("岗位要求")) {
-                    currentSection = "岗位要求";
-                    continue;
-                } else if (trimmed.includes("加分项")) {
-                    currentSection = "加分项";
-                    continue;
-                }
-                if (currentSection && trimmed) sections[currentSection] += trimmed + "\n";
-            }
-            responsibilities = sections["岗位职责"].trim();
-            requirements = sections["岗位要求"].trim();
-            plus = sections["加分项"].trim();
-            return { responsibilities, requirements, plus };
-        }
-        function renderTranslation(text) {
-            const { responsibilities, requirements, plus } = parseTranslationToSections(text);
-            const cardClass = "bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition";
-            return `<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div class="${cardClass}"><div class="flex items-center gap-2 mb-3 border-b pb-2"><i class="fas fa-tasks text-indigo-500"></i><h3 class="font-semibold text-gray-800">岗位职责</h3></div><div class="text-sm text-gray-700 whitespace-pre-wrap">${responsibilities ? responsibilities.replace(/\n/g, '<br>') : '<span class="text-gray-400 italic">无</span>'}</div></div>
-                        <div class="${cardClass}"><div class="flex items-center gap-2 mb-3 border-b pb-2"><i class="fas fa-clipboard-list text-indigo-500"></i><h3 class="font-semibold text-gray-800">岗位要求</h3></div><div class="text-sm text-gray-700 whitespace-pre-wrap">${requirements ? requirements.replace(/\n/g, '<br>') : '<span class="text-gray-400 italic">无</span>'}</div></div>
-                        <div class="${cardClass}"><div class="flex items-center gap-2 mb-3 border-b pb-2"><i class="fas fa-star text-indigo-500"></i><h3 class="font-semibold text-gray-800">加分项</h3></div><div class="text-sm text-gray-700 whitespace-pre-wrap">${plus ? plus.replace(/\n/g, '<br>') : '<span class="text-gray-400 italic">无</span>'}</div></div>
-                    </div>`;
-        }
-        function cleanText(text) { return text.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim(); }
-        function renderMatchResult(data) {
-            const overall = data.overall_match || { score: 0, reason: '' };
-            const subs = data.sub_scores || { skills: 0, experience: 0, education: 0 };
-            const opt = data.optimization || { keep: [], weaken: [], deepen: [], not_match: [] };
-            const advice = data.application_advice || { suggestion: '', reason: '' };
-            const keepItems = opt.keep.map(k => `<li>${cleanText(k)}</li>`).join('');
-            const weakenItems = opt.weaken.map(w => `<li>${cleanText(w)}</li>`).join('');
-            const deepenItems = opt.deepen.map(d => `<li>${cleanText(d)}</li>`).join('');
-            const notMatchItems = opt.not_match.map(n => `<li>${cleanText(n)}</li>`).join('');
-            const cardClass = "bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition";
-            return `<div class="mb-6"><div class="flex flex-wrap items-center justify-between gap-2"><div class="text-2xl font-bold text-indigo-600">匹配度 ${overall.score}%</div><div class="text-sm text-gray-500">${overall.reason}</div></div><div class="mt-2 flex flex-wrap gap-4 text-sm"><span><i class="fas fa-code mr-1"></i>技能匹配: ${subs.skills}%</span><span><i class="fas fa-briefcase mr-1"></i>经验匹配: ${subs.experience}%</span><span><i class="fas fa-graduation-cap mr-1"></i>教育匹配: ${subs.education}%</span></div></div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                        <div class="${cardClass}"><h3 class="font-semibold text-green-700">✅ 强匹配</h3><ul class="mt-2 custom-list">${keepItems || '<li>无</li>'}</ul></div>
-                        <div class="${cardClass}"><h3 class="font-semibold text-yellow-700">⚠️ 可弱化</h3><ul class="mt-2 custom-list">${weakenItems || '<li>无</li>'}</ul></div>
-                        <div class="${cardClass}"><h3 class="font-semibold text-blue-700">🔍 可深挖</h3><ul class="mt-2 custom-list">${deepenItems || '<li>无</li>'}</ul></div>
-                        <div class="${cardClass}"><h3 class="font-semibold text-red-700">❌ 不匹配</h3><ul class="mt-2 custom-list">${notMatchItems || '<li>无</li>'}</ul></div>
-                    </div>
-                    <div class="mt-4 p-4 bg-indigo-50 rounded-xl border border-indigo-100"><div class="flex items-start gap-2"><i class="fas fa-lightbulb text-indigo-600 mt-0.5"></i><div><span class="font-semibold text-indigo-800">投递建议：</span> <span class="text-indigo-700">${advice.suggestion}</span><p class="text-gray-700 text-sm mt-1">${advice.reason}</p></div></div></div>`;
-        }
-
-        // 解析工作流返回的数组，分离 jobs 和 best_match
-        function parseJobRecommendationResponse(rawArray) {
-            if (!Array.isArray(rawArray) || rawArray.length === 0) {
-                return { jobs: [], best_match: null, best_reason: null };
-            }
-            // 检查最后一个元素是否包含 best_match 字段
-            const last = rawArray[rawArray.length - 1];
-            if (last && (last.best_match || last.best_reason)) {
-                const jobs = rawArray.slice(0, -1);
-                const best_match = last.best_match || null;
-                const best_reason = last.best_reason || null;
-                return { jobs, best_match, best_reason };
-            } else {
-                // 没有 best_match，整个数组就是 jobs
-                return { jobs: rawArray, best_match: null, best_reason: null };
-            }
-        }
-
-        function renderJobRecommendations(data, language) {
-            if (!data || !data.jobs || data.jobs.length === 0) {
-                return `<div class="text-center py-8 text-gray-500">暂无推荐岗位，请检查简历内容或稍后重试。</div>`;
-            }
-            let html = `<div class="mb-4 flex justify-between items-center flex-wrap gap-2"><div class="text-sm text-gray-500">🌐 语言切换：</div><select id="langSelect" class="border rounded-lg px-3 py-1 text-sm"><option value="zh" ${language === 'zh' ? 'selected' : ''}>中文</option><option value="en" ${language === 'en' ? 'selected' : ''}>English</option><option value="fr" ${language === 'fr' ? 'selected' : ''}>Français</option></select></div>`;
-            html += `<div class="space-y-6">`;
+        // 渲染岗位推荐结果
+        function renderJobs(data) {
+            if (!data || !data.jobs || data.jobs.length === 0) return '<div class="text-center py-8 text-gray-500">暂无推荐岗位，请检查简历内容或稍后重试。</div>';
+            let html = `<div class="space-y-5">`;
             data.jobs.forEach((job, idx) => {
                 const isBest = data.best_match && data.best_match.title === job.title;
-                html += `<div class="border rounded-xl p-4 ${isBest ? 'best-match-highlight' : ''} transition">
+                html += `<div class="border rounded-xl p-4 ${isBest ? 'best-match-highlight' : ''}">
                             <div class="flex justify-between items-start flex-wrap gap-2">
                                 <h3 class="text-lg font-bold text-indigo-700">${idx+1}. ${job.title}</h3>
                                 <span class="bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full text-sm">匹配度 ${job.match_score}%</span>
                             </div>
-                            <p class="text-gray-600 text-sm mt-2">${job.description}</p>
+                            <p class="text-gray-600 text-sm mt-1">${job.description}</p>
                             <div class="mt-2 flex flex-wrap gap-1">
                                 ${job.keywords.map(kw => `<span class="keyword-tag">${kw}</span>`).join('')}
                             </div>
@@ -337,62 +231,69 @@
             });
             html += `</div>`;
             if (data.best_match && data.best_reason) {
-                html += `<div class="mt-6 p-4 bg-amber-50 rounded-xl border border-amber-200">
+                html += `<div class="mt-5 p-3 bg-amber-50 rounded-xl border border-amber-200">
                             <div class="flex items-start gap-2">
                                 <i class="fas fa-crown text-amber-500 text-xl"></i>
                                 <div>
-                                    <span class="font-bold text-amber-800">🔮 灵魂匹配推荐：</span>
+                                    <span class="font-bold text-amber-800">🔮 最佳匹配：</span>
                                     <span class="font-semibold text-amber-700">${data.best_match.title}</span>
                                     <p class="text-gray-700 text-sm mt-1">${data.best_reason}</p>
                                 </div>
                             </div>
                          </div>`;
             }
-            html += `<div class="mt-6 text-center"><button id="soulMatchBtn" class="bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium py-2 px-6 rounded-full shadow hover:shadow-lg transition">🔮 灵魂匹配</button></div>`;
             return html;
         }
 
-        async function loadRecommendations(language) {
+        // 加载岗位推荐（调用工作流）
+        async function loadRecommendations() {
             if (!resumeTextContent) {
-                resultContainer.innerHTML = showError("请先上传简历或粘贴简历文本");
+                recommendResultDiv.innerHTML = showError("请先上传简历");
                 return;
             }
-            recommendLoading = true;
-            resultContainer.innerHTML = showLoading();
+            if (userPreferences.some(v => !v)) {
+                alert("请完成所有选择题");
+                return;
+            }
+            const prefStr = userPreferences.join(',');
+            recommendResultDiv.innerHTML = showLoading();
             try {
-                const inputs = { resume_text: resumeTextContent, language: language };
+                const inputs = {
+                    resume_text: resumeTextContent,
+                    language: currentRecommendLanguage,
+                    preferences: prefStr
+                };
                 const res = await callJobRecommender(inputs);
-                let rawOutput = res.data.outputs?.recommendation || res.data.outputs?.recommendations;
-                if (!rawOutput) throw new Error('未收到岗位推荐数据，请检查工作流输出');
+                let rawOutput = res.data.outputs?.recommendation || res.data.outputs?.result || res.data.outputs?.text;
+                if (!rawOutput) throw new Error('未收到数据');
                 let jsonStr = rawOutput.trim();
-                if (jsonStr.startsWith('```json')) {
-                    jsonStr = jsonStr.replace(/^```json\n?/, '').replace(/\n?```$/, '');
-                } else if (jsonStr.startsWith('```')) {
-                    jsonStr = jsonStr.replace(/^```\n?/, '').replace(/\n?```$/, '');
+                if (jsonStr.startsWith('```json')) jsonStr = jsonStr.replace(/^```json\n?/, '').replace(/\n?```$/, '');
+                else if (jsonStr.startsWith('```')) jsonStr = jsonStr.replace(/^```\n?/, '').replace(/\n?```$/, '');
+                let parsed = JSON.parse(jsonStr);
+                // 如果返回的是数组，转换成对象
+                let data;
+                if (Array.isArray(parsed)) {
+                    // 兼容旧格式：数组最后一个元素可能是 best_match
+                    if (parsed.length && parsed[parsed.length-1].best_match) {
+                        const jobs = parsed.slice(0, -1);
+                        const best_match = parsed[parsed.length-1].best_match;
+                        const best_reason = parsed[parsed.length-1].best_reason;
+                        data = { jobs, best_match, best_reason };
+                    } else {
+                        data = { jobs: parsed };
+                    }
+                } else {
+                    data = parsed;
                 }
-                let parsedArray = JSON.parse(jsonStr);
-                const { jobs, best_match, best_reason } = parseJobRecommendationResponse(parsedArray);
-                const data = { jobs, best_match, best_reason };
-                currentRecommendJobs = data;
-                resultContainer.innerHTML = renderJobRecommendations(data, language);
-                const langSelect = document.getElementById('langSelect');
-                if (langSelect) langSelect.addEventListener('change', (e) => loadRecommendations(e.target.value));
-                const soulBtn = document.getElementById('soulMatchBtn');
-                if (soulBtn) soulBtn.addEventListener('click', () => openSoulMatchModal());
+                recommendResultDiv.innerHTML = renderJobs(data);
             } catch (err) {
                 console.error(err);
-                resultContainer.innerHTML = showError(err.message || '解析推荐结果失败，请稍后重试');
-            } finally {
-                recommendLoading = false;
+                recommendResultDiv.innerHTML = showError(err.message);
             }
         }
 
-        function openSoulMatchModal() {
-            if (!currentRecommendJobs || !currentRecommendJobs.jobs) {
-                alert("请先获取岗位推荐");
-                return;
-            }
-            modalResultDiv.innerHTML = "";
+        // 生成选择题界面
+        function renderQuestions() {
             let html = "";
             for (let i = 0; i < questions.length; i++) {
                 html += `<div class="question-item">
@@ -409,6 +310,7 @@
                 html += `</div></div>`;
             }
             questionsContainer.innerHTML = html;
+            // 绑定事件
             document.querySelectorAll('.option-label').forEach(label => {
                 label.addEventListener('click', (e) => {
                     const parent = label.closest('.option-group');
@@ -417,116 +319,124 @@
                     parent.querySelectorAll('.option-label').forEach(l => l.classList.remove('selected'));
                     label.classList.add('selected');
                     userPreferences[qIdx] = val;
-                    const radio = label.querySelector('input');
-                    if (radio) radio.checked = true;
+                    // 检查是否全部完成
+                    const allSelected = userPreferences.every(v => v !== "");
+                    startRecommendBtn.disabled = !allSelected;
                 });
             });
-            modal.style.display = 'flex';
+            const allSelected = userPreferences.every(v => v !== "");
+            startRecommendBtn.disabled = !allSelected;
         }
 
-        function closeModal() {
-            modal.style.display = 'none';
-            modalResultDiv.innerHTML = "";
-        }
-
-        async function submitPreferences() {
-            if (userPreferences.some(v => !v)) {
-                modalResultDiv.innerHTML = '<div class="text-red-500 text-sm mt-2">请完成所有选择题</div>';
-                return;
+        // 渲染 JD 分析（三卡片）
+        function renderTranslation(text) {
+            // 解析文本中的三个部分（简化解析）
+            const sections = { "岗位职责": "", "岗位要求": "", "加分项": "" };
+            let current = null;
+            const lines = text.split('\n');
+            for (let line of lines) {
+                const l = line.trim();
+                if (l.includes("岗位职责")) { current = "岗位职责"; continue; }
+                if (l.includes("岗位要求")) { current = "岗位要求"; continue; }
+                if (l.includes("加分项")) { current = "加分项"; continue; }
+                if (current && l) sections[current] += l + "<br>";
             }
-            const prefStr = userPreferences.join(',');
-            modalResultDiv.innerHTML = '<div class="text-center py-4"><div class="loader inline-block"></div><p class="mt-2">分析中...</p></div>';
-            try {
-                const inputs = {
-                    resume_text: resumeTextContent,
-                    language: currentRecommendLanguage,
-                    preferences: prefStr
-                };
-                const res = await callJobRecommender(inputs);
-                let rawOutput = res.data.outputs?.recommendation || res.data.outputs?.recommendations;
-                if (!rawOutput) throw new Error('未收到数据');
-                let jsonStr = rawOutput.trim();
-                if (jsonStr.startsWith('```json')) {
-                    jsonStr = jsonStr.replace(/^```json\n?/, '').replace(/\n?```$/, '');
-                } else if (jsonStr.startsWith('```')) {
-                    jsonStr = jsonStr.replace(/^```\n?/, '').replace(/\n?```$/, '');
-                }
-                let parsedArray = JSON.parse(jsonStr);
-                const { jobs, best_match, best_reason } = parseJobRecommendationResponse(parsedArray);
-                const data = { jobs, best_match, best_reason };
-                currentRecommendJobs = data;
-                resultContainer.innerHTML = renderJobRecommendations(data, currentRecommendLanguage);
-                const langSelect = document.getElementById('langSelect');
-                if (langSelect) langSelect.addEventListener('change', (e) => loadRecommendations(e.target.value));
-                const soulBtn = document.getElementById('soulMatchBtn');
-                if (soulBtn) soulBtn.addEventListener('click', () => openSoulMatchModal());
-                closeModal();
-            } catch (err) {
-                modalResultDiv.innerHTML = `<div class="text-red-500 text-sm mt-2">${err.message}</div>`;
-            }
+            const cardClass = "bg-gray-50 rounded-xl p-3";
+            return `<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="${cardClass}"><h3 class="font-semibold">📋 岗位职责</h3><div class="text-sm">${sections["岗位职责"] || "无"}</div></div>
+                        <div class="${cardClass}"><h3 class="font-semibold">📌 岗位要求</h3><div class="text-sm">${sections["岗位要求"] || "无"}</div></div>
+                        <div class="${cardClass}"><h3 class="font-semibold">⭐ 加分项</h3><div class="text-sm">${sections["加分项"] || "无"}</div></div>
+                    </div>`;
+        }
+        // 智能匹配渲染（四卡片）
+        function renderMatch(data) {
+            const overall = data.overall_match || { score: 0, reason: '' };
+            const subs = data.sub_scores || { skills: 0, experience: 0, education: 0 };
+            const opt = data.optimization || { keep: [], weaken: [], deepen: [], not_match: [] };
+            const advice = data.application_advice || { suggestion: '', reason: '' };
+            const cardClass = "bg-white rounded-xl p-3 shadow-sm";
+            return `<div class="mb-4"><div class="text-2xl font-bold text-indigo-600">匹配度 ${overall.score}%</div><div class="text-sm">${overall.reason}</div><div class="flex gap-3 text-sm mt-2"><span>技能 ${subs.skills}%</span><span>经验 ${subs.experience}%</span><span>教育 ${subs.education}%</span></div></div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div class="${cardClass}"><h3 class="font-semibold text-green-700">✅ 强匹配</h3><ul class="list-disc pl-4">${opt.keep.map(k=>`<li>${k}</li>`).join('')||'<li>无</li>'}</ul></div>
+                        <div class="${cardClass}"><h3 class="font-semibold text-yellow-700">⚠️ 可弱化</h3><ul class="list-disc pl-4">${opt.weaken.map(w=>`<li>${w}</li>`).join('')||'<li>无</li>'}</ul></div>
+                        <div class="${cardClass}"><h3 class="font-semibold text-blue-700">🔍 可深挖</h3><ul class="list-disc pl-4">${opt.deepen.map(d=>`<li>${d}</li>`).join('')||'<li>无</li>'}</ul></div>
+                        <div class="${cardClass}"><h3 class="font-semibold text-red-700">❌ 不匹配</h3><ul class="list-disc pl-4">${opt.not_match.map(n=>`<li>${n}</li>`).join('')||'<li>无</li>'}</ul></div>
+                    </div>
+                    <div class="mt-3 p-2 bg-indigo-50 rounded"><span class="font-semibold">投递建议：</span>${advice.suggestion} — ${advice.reason}</div>`;
         }
 
-        closeModalBtn.addEventListener('click', closeModal);
-        cancelModalBtn.addEventListener('click', closeModal);
-        submitPreferencesBtn.addEventListener('click', submitPreferences);
-        window.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
-
-        function updateResultDisplay() {
-            if (currentTab === 'translate') {
-                tabTranslateBtn.className = "py-2 px-1 text-indigo-600 border-b-2 border-indigo-600 font-medium";
-                tabMatchBtn.className = "py-2 px-1 text-gray-500 hover:text-gray-700";
-                tabRecommendBtn.className = "py-2 px-1 text-gray-500 hover:text-gray-700";
-                if (isAnalyzing) resultContainer.innerHTML = showLoading();
-                else if (translationResult) resultContainer.innerHTML = renderTranslation(translationResult);
-                else resultContainer.innerHTML = '<div class="text-gray-400 text-center py-12">点击「开始分析」获取JD分析结果</div>';
-            } else if (currentTab === 'match') {
-                tabMatchBtn.className = "py-2 px-1 text-indigo-600 border-b-2 border-indigo-600 font-medium";
-                tabTranslateBtn.className = "py-2 px-1 text-gray-500 hover:text-gray-700";
-                tabRecommendBtn.className = "py-2 px-1 text-gray-500 hover:text-gray-700";
-                if (isAnalyzing) resultContainer.innerHTML = showLoading();
-                else if (matchResult) resultContainer.innerHTML = renderMatchResult(matchResult);
-                else resultContainer.innerHTML = '<div class="text-gray-400 text-center py-12">点击「开始分析」获取智能匹配结果</div>';
-            } else if (currentTab === 'recommend') {
-                tabRecommendBtn.className = "py-2 px-1 text-indigo-600 border-b-2 border-indigo-600 font-medium";
-                tabTranslateBtn.className = "py-2 px-1 text-gray-500 hover:text-gray-700";
-                tabMatchBtn.className = "py-2 px-1 text-gray-500 hover:text-gray-700";
-                if (!resumeTextContent) {
-                    resultContainer.innerHTML = showError("请先上传简历");
-                } else if (!currentRecommendJobs) {
-                    loadRecommendations(currentRecommendLanguage);
-                } else {
-                    resultContainer.innerHTML = renderJobRecommendations(currentRecommendJobs, currentRecommendLanguage);
-                    const langSelect = document.getElementById('langSelect');
-                    if (langSelect) langSelect.addEventListener('change', (e) => loadRecommendations(e.target.value));
-                    const soulBtn = document.getElementById('soulMatchBtn');
-                    if (soulBtn) soulBtn.addEventListener('click', () => openSoulMatchModal());
-                }
-            }
-        }
-
-        tabTranslateBtn.addEventListener('click', () => { currentTab = 'translate'; updateResultDisplay(); });
-        tabMatchBtn.addEventListener('click', () => { currentTab = 'match'; updateResultDisplay(); });
-        tabRecommendBtn.addEventListener('click', () => { currentTab = 'recommend'; updateResultDisplay(); });
-
-        analyzeBtn.addEventListener('click', async () => {
+        // 岗位分析逻辑
+        async function runAnalyze() {
             const jd = jdTextArea.value.trim();
             if (!jd) { alert("请粘贴职位描述"); return; }
             if (!resumeTextContent) { alert("请先上传简历"); return; }
-            isAnalyzing = true;
-            updateResultDisplay();
+            analyzeResultContent.innerHTML = showLoading();
             try {
-                const result = await callPIPEI({ jd_text: jd, resume_text: resumeTextContent });
-                translationResult = result.data.outputs.translation;
-                const analysisRaw = result.data.outputs.analysis;
-                try { matchResult = JSON.parse(analysisRaw); } catch(e) { matchResult = null; }
-                isAnalyzing = false;
-                currentTab = 'translate';
-                updateResultDisplay();
+                const res = await callPIPEI({ jd_text: jd, resume_text: resumeTextContent });
+                const translation = res.data.outputs.translation;
+                const analysisRaw = res.data.outputs.analysis;
+                let match = null;
+                try { match = JSON.parse(analysisRaw); } catch(e) { console.warn(e); }
+                analyzeResultData = { translation, match };
+                // 默认显示翻译
+                if (translation) analyzeResultContent.innerHTML = renderTranslation(translation);
+                else analyzeResultContent.innerHTML = '<div class="text-center">翻译结果为空</div>';
             } catch (err) {
-                isAnalyzing = false;
-                resultContainer.innerHTML = showError(err.message);
+                analyzeResultContent.innerHTML = showError(err.message);
             }
-        });
+        }
+
+        // 选项卡切换（岗位分析结果区）
+        let currentAnalyzeTab = 'translate';
+        function switchAnalyzeTab(tab) {
+            currentAnalyzeTab = tab;
+            if (tab === 'translate') {
+                tabTranslateResult.className = "py-1 px-2 text-indigo-600 border-b-2 border-indigo-600";
+                tabMatchResult.className = "py-1 px-2 text-gray-500";
+                if (analyzeResultData.translation) analyzeResultContent.innerHTML = renderTranslation(analyzeResultData.translation);
+                else analyzeResultContent.innerHTML = '<div class="text-center text-gray-500">暂无JD分析结果，请先分析</div>';
+            } else {
+                tabMatchResult.className = "py-1 px-2 text-indigo-600 border-b-2 border-indigo-600";
+                tabTranslateResult.className = "py-1 px-2 text-gray-500";
+                if (analyzeResultData.match) analyzeResultContent.innerHTML = renderMatch(analyzeResultData.match);
+                else analyzeResultContent.innerHTML = '<div class="text-center text-gray-500">暂无智能匹配结果，请先分析</div>';
+            }
+        }
+        tabTranslateResult.addEventListener('click', () => switchAnalyzeTab('translate'));
+        tabMatchResult.addEventListener('click', () => switchAnalyzeTab('match'));
+
+        // 模式切换
+        function setMode(mode) {
+            currentMode = mode;
+            if (mode === 'recommend') {
+                modeRecommendBtn.className = "mode-btn-active px-6 py-2 rounded-full font-medium transition flex items-center gap-2";
+                modeAnalyzeBtn.className = "mode-btn-inactive px-6 py-2 rounded-full font-medium transition flex items-center gap-2";
+                recommendPanel.classList.remove('hidden');
+                analyzePanel.classList.add('hidden');
+                // 确保选择题已渲染
+                if (questionsContainer.children.length === 0) renderQuestions();
+            } else {
+                modeAnalyzeBtn.className = "mode-btn-active px-6 py-2 rounded-full font-medium transition flex items-center gap-2";
+                modeRecommendBtn.className = "mode-btn-inactive px-6 py-2 rounded-full font-medium transition flex items-center gap-2";
+                analyzePanel.classList.remove('hidden');
+                recommendPanel.classList.add('hidden');
+            }
+        }
+
+        // 初始化和事件绑定
+        function init() {
+            dynamicContent.appendChild(recommendPanel);
+            dynamicContent.appendChild(analyzePanel);
+            recommendPanel.classList.remove('hidden');
+            analyzePanel.classList.add('hidden');
+            renderQuestions();
+            startRecommendBtn.addEventListener('click', loadRecommendations);
+            startAnalyzeBtn.addEventListener('click', runAnalyze);
+            langSelect.addEventListener('change', (e) => { currentRecommendLanguage = e.target.value; });
+            modeRecommendBtn.addEventListener('click', () => setMode('recommend'));
+            modeAnalyzeBtn.addEventListener('click', () => setMode('analyze'));
+        }
+        init();
     </script>
 </body>
 </html>

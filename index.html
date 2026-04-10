@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>PIPEI · 智能求职助手</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -50,15 +50,6 @@
         .tab-inactive:hover {
             color: #1f2937;
         }
-        .flex-col-stretch {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-        }
-        .textarea-grow {
-            flex: 1;
-            min-height: 0;
-        }
         .custom-list {
             list-style-type: disc;
             padding-left: 1.25rem;
@@ -68,64 +59,58 @@
             white-space: normal;
             word-break: break-word;
         }
-        /* 自定义 tooltip 样式 */
-        .info-icon {
-            position: relative;
-            cursor: help;
-            margin-left: 0.25rem;
-            color: #9ca3af;
-            font-size: 0.875rem;
-            transition: color 0.2s;
+        /* 弹窗样式 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
         }
-        .info-icon:hover {
-            color: #4f46e5;
+        .modal-container {
+            background: white;
+            border-radius: 24px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 85vh;
+            overflow-y: auto;
+            padding: 24px;
+            box-shadow: 0 20px 35px -8px rgba(0,0,0,0.2);
         }
-        .info-icon .tooltip-text {
-            visibility: hidden;
-            opacity: 0;
-            width: 220px;
-            background-color: #1f2937;
-            color: #fff;
-            text-align: center;
-            border-radius: 0.5rem;
-            padding: 0.5rem 0.75rem;
-            position: absolute;
-            z-index: 10;
-            bottom: 125%;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 0.75rem;
-            font-weight: normal;
-            line-height: 1.4;
-            white-space: normal;
-            transition: opacity 0.2s, visibility 0.2s;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-            pointer-events: none;
+        .question-item {
+            margin-bottom: 20px;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 16px;
         }
-        .info-icon:hover .tooltip-text {
-            visibility: visible;
-            opacity: 1;
+        .option-label {
+            display: inline-flex;
+            align-items: center;
+            margin-right: 24px;
+            cursor: pointer;
         }
-        /* 小三角 */
-        .info-icon .tooltip-text::after {
-            content: '';
-            position: absolute;
-            top: 100%;
-            left: 50%;
-            margin-left: -5px;
-            border-width: 5px;
-            border-style: solid;
-            border-color: #1f2937 transparent transparent transparent;
+        .best-match-highlight {
+            background: linear-gradient(120deg, #fef3c7 0%, #fde68a 100%);
+            border-left: 4px solid #f59e0b;
+            padding: 12px;
+            border-radius: 12px;
+            margin-top: 16px;
         }
     </style>
 </head>
 <body class="min-h-screen py-8">
     <div class="container mx-auto px-4 max-w-6xl">
+        <!-- 头部 -->
         <div class="text-center mb-10">
             <h1 class="text-5xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">PIPEI</h1>
             <p class="text-gray-600 mt-2 text-lg">上传简历 · 粘贴JD · 智能分析与匹配</p>
         </div>
 
+        <!-- 左右两栏 -->
         <div class="grid md:grid-cols-2 gap-8 mb-8">
             <!-- 左侧：简历上传 -->
             <div class="bg-white rounded-2xl shadow-lg p-6 card-hover flex flex-col">
@@ -152,18 +137,28 @@
             </div>
         </div>
 
+        <!-- 开始分析按钮 -->
         <div class="flex justify-center mb-8">
             <button id="analyzeBtn" class="bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-semibold py-3 px-10 rounded-xl shadow-lg transition transform hover:scale-105 flex items-center gap-2">
                 <i class="fas fa-chart-line"></i> 开始分析
             </button>
         </div>
 
+        <!-- 结果展示区（选项卡） -->
         <div class="bg-white rounded-2xl shadow-xl p-6 card-hover">
-            <div class="border-b border-gray-200">
+            <div class="border-b border-gray-200 flex justify-between items-center flex-wrap">
                 <nav class="flex gap-6">
                     <button id="tabTranslate" class="py-2 px-1 text-indigo-600 border-b-2 border-indigo-600 font-medium">📖 JD分析</button>
                     <button id="tabMatch" class="py-2 px-1 text-gray-500 hover:text-gray-700">🎯 智能匹配</button>
+                    <button id="tabJobRec" class="py-2 px-1 text-gray-500 hover:text-gray-700">✨ 岗位推荐</button>
                 </nav>
+                <div id="languageSelector" class="hidden md:block mt-2 md:mt-0">
+                    <select id="jobRecLang" class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 bg-white">
+                        <option value="zh">🌐 中文</option>
+                        <option value="en">English</option>
+                        <option value="fr">Français</option>
+                    </select>
+                </div>
             </div>
             <div id="resultContainer" class="mt-6">
                 <div class="text-gray-400 text-center py-12 flex flex-col items-center gap-2">
@@ -171,6 +166,24 @@
                     <p>点击「开始分析」按钮，结果将显示在这里</p>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- 灵魂匹配弹窗（隐藏） -->
+    <div id="soulMatchModal" class="modal-overlay hidden">
+        <div class="modal-container">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-indigo-800">🔮 灵魂匹配</h2>
+                <button id="closeModalBtn" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="questionsArea">
+                <!-- 动态生成6道题 -->
+            </div>
+            <div class="mt-6 flex gap-3 justify-end">
+                <button id="cancelMatchBtn" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">取消</button>
+                <button id="submitMatchBtn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">分析</button>
+            </div>
+            <div id="matchResultArea" class="mt-4 hidden"></div>
         </div>
     </div>
 
@@ -184,14 +197,38 @@
         const analyzeBtn = document.getElementById('analyzeBtn');
         const tabTranslateBtn = document.getElementById('tabTranslate');
         const tabMatchBtn = document.getElementById('tabMatch');
+        const tabJobRecBtn = document.getElementById('tabJobRec');
         const resultContainer = document.getElementById('resultContainer');
+        const languageSelector = document.getElementById('languageSelector');
+        const jobRecLang = document.getElementById('jobRecLang');
+        const modal = document.getElementById('soulMatchModal');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const cancelMatchBtn = document.getElementById('cancelMatchBtn');
+        const submitMatchBtn = document.getElementById('submitMatchBtn');
+        const matchResultArea = document.getElementById('matchResultArea');
 
+        // 状态变量
         let resumeTextContent = "";
         let translationResult = null;
         let matchResult = null;
         let currentTab = "translate";
         let isAnalyzing = false;
 
+        // 岗位推荐相关
+        let jobRecommendations = null;      // 存储 { jobs, best_match, best_reason }
+        let currentJobRecLang = "zh";
+        let isJobRecLoading = false;
+        let questions = [
+            { text: "你更喜欢的工作节奏是？", options: ["快速变化，多任务并行", "稳定有序，深度专注"], codes: ["A","B"] },
+            { text: "在团队中你通常扮演什么角色？", options: ["创意提出者", "执行推动者", "协调沟通者"], codes: ["A","B","C"] },
+            { text: "你更擅长处理哪类问题？", options: ["抽象的逻辑与数据", "具体的人际与流程"], codes: ["A","B"] },
+            { text: "你对数字的敏感度如何？", options: ["很高，喜欢分析数据", "一般，更关注业务含义"], codes: ["A","B"] },
+            { text: "你更希望工作成果是？", options: ["可量化的指标提升", "用户或同事的认可"], codes: ["A","B"] },
+            { text: "你对未知领域的探索意愿？", options: ["强烈，喜欢新工具/方法", "谨慎，偏好成熟方案"], codes: ["A","B"] }
+        ];
+        let userAnswers = ["", "", "", "", "", ""]; // 存储每道题的答案编码
+
+        // 辅助函数
         function showLoading() {
             return `<div class="flex justify-center py-12"><div class="loader"></div><span class="ml-3 text-gray-600">分析中，请稍候...</span></div>`;
         }
@@ -200,11 +237,21 @@
             return `<div class="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg flex items-center gap-2"><i class="fas fa-exclamation-triangle"></i> ${message}</div>`;
         }
 
-        async function callDifyAPI(inputs) {
-            const response = await fetch('/api/dify', {
+        async function callDifyAPI(inputs, apiKey, workflowType = 'main') {
+            // 使用 main 工作流还是 job recommender 工作流
+            let url = '';
+            let key = '';
+            if (workflowType === 'main') {
+                url = 'https://api.dify.ai/v1/workflows/run';
+                key = 'app-你的主工作流API密钥'; // 请替换
+            } else {
+                url = 'https://api.dify.ai/v1/workflows/run';
+                key = 'app-你的岗位推荐工作流API密钥'; // 请替换
+            }
+            const response = await fetch(url, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ inputs })
+                headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ inputs, user: 'anonymous' })
             });
             if (!response.ok) {
                 const text = await response.text();
@@ -214,7 +261,26 @@
             return data;
         }
 
-        // PDF 解析
+        // 由于实际密钥不能暴露在前端，这里提供两个函数，你需要通过环境变量或代理来隐藏密钥。
+        // 为了演示，我将使用占位符，实际部署时请替换为正确的调用方式（例如调用 Vercel 代理函数）。
+        // 为了快速 MVP，我假设你已经在 Vercel 中设置了环境变量，并通过 /api/dify 代理主工作流。
+        // 对于新的岗位推荐工作流，我们也可以创建一个新的代理 /api/job-recommend。
+        // 但为了简化，我会直接调用 Dify API，你需要将下面的密钥替换为真实值（注意安全，仅供测试）。
+        // 在生产环境，强烈建议使用 Vercel 代理。
+
+        // 临时方案：直接调用（请将密钥填入下方）
+        const MAIN_WORKFLOW_API_KEY = 'app-你的主工作流密钥';   // 替换
+        const JOB_REC_WORKFLOW_API_KEY = 'app-你的岗位推荐密钥'; // 替换
+
+        async function callMainWorkflow(inputs) {
+            return callDifyAPI(inputs, MAIN_WORKFLOW_API_KEY, 'main');
+        }
+
+        async function callJobRecWorkflow(inputs) {
+            return callDifyAPI(inputs, JOB_REC_WORKFLOW_API_KEY, 'job');
+        }
+
+        // PDF/Word 解析（复用原有代码）
         function parsePDF(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -240,7 +306,6 @@
             });
         }
 
-        // Word 解析
         function parseDOCX(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -254,7 +319,6 @@
             });
         }
 
-        // 文件上传
         uploadBtn.addEventListener('click', () => resumeFileInput.click());
         resumeFileInput.addEventListener('change', async (e) => {
             const file = e.target.files[0];
@@ -268,17 +332,15 @@
                     text = await parseDOCX(file);
                 } else {
                     alert("不支持的文件类型，请上传 PDF 或 Word 文档");
-                    // 清空文件状态
                     resumeFileInput.value = '';
                     fileNameSpan.textContent = "未选择文件";
                     return;
                 }
                 resumeTextContent = text;
-                resumeTextArea.value = text;   // 同步到文本区
+                resumeTextArea.value = text;
             } catch (error) {
                 console.error(error);
                 alert("文件解析失败，请尝试直接粘贴文本");
-                // 解析失败，清空文件状态
                 resumeFileInput.value = '';
                 fileNameSpan.textContent = "未选择文件";
                 resumeTextContent = "";
@@ -286,12 +348,10 @@
             }
         });
 
-        // 手动输入简历文本（互斥：清空文件上传状态）
         resumeTextArea.addEventListener('input', () => {
-            // 用户手动修改文本区，则清除文件上传状态
             resumeFileInput.value = '';
             fileNameSpan.textContent = "未选择文件";
-            resumeTextContent = resumeTextArea.value;  // 更新全局简历文本
+            resumeTextContent = resumeTextArea.value;
         });
 
         // 解析 JD 翻译文本为三个部分
@@ -348,19 +408,6 @@
             return text.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
         }
 
-        // 辅助生成带信息图标的标题
-        function titleWithIcon(text, tooltip) {
-            return `
-                <div class="flex items-center gap-1">
-                    <span>${text}</span>
-                    <span class="info-icon">
-                        <i class="fas fa-info-circle"></i>
-                        <span class="tooltip-text">${tooltip}</span>
-                    </span>
-                </div>
-            `;
-        }
-
         function renderMatchResult(data) {
             const overall = data.overall_match || { score: 0, reason: '' };
             const subs = data.sub_scores || { skills: 0, experience: 0, education: 0 };
@@ -371,12 +418,6 @@
             const deepenItems = opt.deepen.map(d => `<li>${cleanText(d)}</li>`).join('');
             const notMatchItems = opt.not_match.map(n => `<li>${cleanText(n)}</li>`).join('');
             const cardClass = "bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition";
-
-            const keepTooltip = "这些是与岗位高度匹配的经历或技能，建议在简历中保留并突出，如加粗、前置或扩展描述。";
-            const weakenTooltip = "这些内容与岗位关联度低或描述冗长，建议精简或删除，让简历更聚焦核心优势。";
-            const deepenTooltip = "简历中已提及但描述不够充分的能力或项目，建议补充细节（如成果、数据、工具），增强说服力。";
-            const notMatchTooltip = "岗位要求但简历中缺失的能力，建议补充学习或强调可迁移经验，并在求职信中说明快速学习意愿。";
-
             return `
                 <div class="mb-6">
                     <div class="flex flex-wrap items-center justify-between gap-2">
@@ -390,22 +431,10 @@
                     </div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                    <div class="${cardClass}">
-                        <h3 class="font-semibold text-green-700">${titleWithIcon("✅ 强匹配", keepTooltip)}</h3>
-                        <ul class="mt-2 custom-list">${keepItems || '<li>无</li>'}</ul>
-                    </div>
-                    <div class="${cardClass}">
-                        <h3 class="font-semibold text-yellow-700">${titleWithIcon("⚠️ 可弱化", weakenTooltip)}</h3>
-                        <ul class="mt-2 custom-list">${weakenItems || '<li>无</li>'}</ul>
-                    </div>
-                    <div class="${cardClass}">
-                        <h3 class="font-semibold text-blue-700">${titleWithIcon("🔍 可深挖", deepenTooltip)}</h3>
-                        <ul class="mt-2 custom-list">${deepenItems || '<li>无</li>'}</ul>
-                    </div>
-                    <div class="${cardClass}">
-                        <h3 class="font-semibold text-red-700">${titleWithIcon("❌ 不匹配", notMatchTooltip)}</h3>
-                        <ul class="mt-2 custom-list">${notMatchItems || '<li>无</li>'}</ul>
-                    </div>
+                    <div class="${cardClass}"><h3 class="font-semibold text-green-700" title="这些是与岗位高度匹配的经历或技能，建议在简历中保留并突出。">✅ 强匹配</h3><ul class="mt-2 custom-list">${keepItems || '<li>无</li>'}</ul></div>
+                    <div class="${cardClass}"><h3 class="font-semibold text-yellow-700" title="这些内容与岗位关联度低或描述冗长，建议精简或删除。">⚠️ 可弱化</h3><ul class="mt-2 custom-list">${weakenItems || '<li>无</li>'}</ul></div>
+                    <div class="${cardClass}"><h3 class="font-semibold text-blue-700" title="简历中已提及但描述不够充分的能力或项目，建议补充细节。">🔍 可深挖</h3><ul class="mt-2 custom-list">${deepenItems || '<li>无</li>'}</ul></div>
+                    <div class="${cardClass}"><h3 class="font-semibold text-red-700" title="岗位要求但简历中缺失的能力，建议补充学习或强调可迁移经验。">❌ 不匹配</h3><ul class="mt-2 custom-list">${notMatchItems || '<li>无</li>'}</ul></div>
                 </div>
                 <div class="mt-4 p-4 bg-indigo-50 rounded-xl border border-indigo-100">
                     <div class="flex items-start gap-2"><i class="fas fa-lightbulb text-indigo-600 mt-0.5"></i><div><span class="font-semibold text-indigo-800">投递建议：</span> <span class="text-indigo-700">${advice.suggestion}</span><p class="text-gray-700 text-sm mt-1">${advice.reason}</p></div></div>
@@ -413,81 +442,248 @@
             `;
         }
 
-        function updateResultDisplay() {
-            if (currentTab === 'translate') {
-                if (isAnalyzing) {
-                    resultContainer.innerHTML = showLoading();
-                } else if (translationResult) {
-                    resultContainer.innerHTML = renderTranslation(translationResult);
-                } else {
-                    resultContainer.innerHTML = '<div class="text-gray-400 text-center py-12 flex flex-col items-center gap-2"><i class="fas fa-file-alt text-4xl opacity-30"></i><p>暂无JD分析结果，请点击「开始分析」</p></div>';
-                }
-            } else {
-                if (isAnalyzing) {
-                    resultContainer.innerHTML = showLoading();
-                } else if (matchResult) {
-                    resultContainer.innerHTML = renderMatchResult(matchResult);
-                } else {
-                    resultContainer.innerHTML = '<div class="text-gray-400 text-center py-12 flex flex-col items-center gap-2"><i class="fas fa-chart-line text-4xl opacity-30"></i><p>暂无匹配结果，请点击「开始分析」</p></div>';
-                }
+        // 渲染岗位推荐
+        function renderJobRecommendations(data) {
+            const jobs = data.jobs || [];
+            if (!jobs.length) return '<div class="text-center py-8 text-gray-500">暂无推荐岗位，请确保简历已填写完整。</div>';
+            let html = `<div class="space-y-6">`;
+            jobs.forEach((job, idx) => {
+                html += `
+                    <div class="border rounded-xl p-4 bg-gray-50">
+                        <div class="flex justify-between items-start flex-wrap">
+                            <h3 class="text-lg font-bold text-indigo-800">${idx+1}. ${job.title}</h3>
+                            <span class="bg-indigo-100 text-indigo-800 text-sm font-semibold px-2.5 py-0.5 rounded-full">匹配度 ${job.match_score}%</span>
+                        </div>
+                        <p class="text-gray-600 text-sm mt-1">${job.description}</p>
+                        <div class="mt-2">
+                            <span class="text-xs font-semibold text-gray-500">🔑 关键词：</span>
+                            <div class="flex flex-wrap gap-1 mt-1">
+                                ${job.keywords.map(kw => `<span class="bg-white border border-gray-200 text-gray-700 text-xs rounded-full px-2 py-0.5">${kw}</span>`).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            if (data.best_match && data.best_reason) {
+                html += `
+                    <div class="best-match-highlight">
+                        <div class="flex items-center gap-2"><i class="fas fa-star text-amber-500"></i><span class="font-bold text-amber-700">✨ 灵魂匹配推荐</span></div>
+                        <div class="mt-1 font-medium">最适合你的岗位：${data.best_match.title} (匹配度 ${data.best_match.match_score}%)</div>
+                        <div class="text-sm text-gray-700 mt-1">${data.best_reason}</div>
+                    </div>
+                `;
+            }
+            html += `</div>`;
+            return html;
+        }
+
+        async function loadJobRecommendations(lang) {
+            if (!resumeTextContent) {
+                resultContainer.innerHTML = showError("请先上传或粘贴简历内容");
+                return;
+            }
+            isJobRecLoading = true;
+            resultContainer.innerHTML = showLoading();
+            try {
+                const inputs = { resume_text: resumeTextContent, language: lang };
+                // 注意：这里需要调用 JobRecommender 工作流
+                const response = await callJobRecWorkflow(inputs);
+                let data = response.data.outputs.result; // 根据实际输出调整
+                if (typeof data === 'string') data = JSON.parse(data);
+                jobRecommendations = data;
+                resultContainer.innerHTML = renderJobRecommendations(jobRecommendations);
+            } catch (err) {
+                resultContainer.innerHTML = showError(err.message);
+            } finally {
+                isJobRecLoading = false;
             }
         }
 
+        // 灵魂匹配弹窗逻辑
+        function buildQuestions() {
+            const container = document.getElementById('questionsArea');
+            let html = '';
+            questions.forEach((q, idx) => {
+                html += `<div class="question-item"><p class="font-medium text-gray-800 mb-2">${idx+1}. ${q.text}</p><div class="flex flex-wrap gap-4">`;
+                q.options.forEach((opt, optIdx) => {
+                    const code = q.codes[optIdx];
+                    const checked = (userAnswers[idx] === code) ? 'checked' : '';
+                    html += `<label class="option-label"><input type="radio" name="q${idx}" value="${code}" ${checked} class="mr-1"> ${opt}</label>`;
+                });
+                html += `</div></div>`;
+            });
+            container.innerHTML = html;
+            // 绑定 change 事件
+            for (let i = 0; i < questions.length; i++) {
+                const radios = document.querySelectorAll(`input[name="q${i}"]`);
+                radios.forEach(radio => {
+                    radio.addEventListener('change', (e) => {
+                        userAnswers[i] = e.target.value;
+                    });
+                });
+            }
+        }
+
+        function openModal() {
+            buildQuestions();
+            matchResultArea.classList.add('hidden');
+            modal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            modal.classList.add('hidden');
+        }
+
+        async function submitMatch() {
+            // 检查是否所有问题都已作答
+            if (userAnswers.some(ans => !ans)) {
+                alert("请回答所有问题");
+                return;
+            }
+            const preferences = userAnswers.join(',');
+            if (!jobRecommendations || !jobRecommendations.jobs) {
+                alert("请先获取岗位推荐");
+                closeModal();
+                return;
+            }
+            // 调用同一工作流，传入 preferences
+            matchResultArea.classList.remove('hidden');
+            matchResultArea.innerHTML = '<div class="text-center py-4"><div class="loader mx-auto"></div><p class="mt-2">分析中...</p></div>';
+            try {
+                const inputs = { resume_text: resumeTextContent, language: currentJobRecLang, preferences: preferences };
+                const response = await callJobRecWorkflow(inputs);
+                let data = response.data.outputs.result;
+                if (typeof data === 'string') data = JSON.parse(data);
+                // 更新全局 jobRecommendations 并重新渲染
+                jobRecommendations = data;
+                // 关闭弹窗，在主区域显示结果并高亮 best_match
+                closeModal();
+                if (resultContainer && currentTab === 'jobrec') {
+                    resultContainer.innerHTML = renderJobRecommendations(jobRecommendations);
+                } else {
+                    // 如果用户在其他选项卡，切换过去
+                    switchTab('jobrec');
+                }
+            } catch (err) {
+                matchResultArea.innerHTML = showError(err.message);
+            }
+        }
+
+        // 选项卡切换
         function switchTab(tab) {
             currentTab = tab;
             if (tab === 'translate') {
                 tabTranslateBtn.className = "py-2 px-1 text-indigo-600 border-b-2 border-indigo-600 font-medium";
                 tabMatchBtn.className = "py-2 px-1 text-gray-500 hover:text-gray-700";
-            } else {
+                tabJobRecBtn.className = "py-2 px-1 text-gray-500 hover:text-gray-700";
+                languageSelector.classList.add('hidden');
+                if (translationResult) {
+                    resultContainer.innerHTML = renderTranslation(translationResult);
+                } else {
+                    resultContainer.innerHTML = '<div class="text-gray-400 text-center py-12 flex flex-col items-center gap-2"><i class="fas fa-file-alt text-4xl opacity-30"></i><p>暂无JD分析结果，请点击「开始分析」</p></div>';
+                }
+            } else if (tab === 'match') {
                 tabMatchBtn.className = "py-2 px-1 text-indigo-600 border-b-2 border-indigo-600 font-medium";
                 tabTranslateBtn.className = "py-2 px-1 text-gray-500 hover:text-gray-700";
+                tabJobRecBtn.className = "py-2 px-1 text-gray-500 hover:text-gray-700";
+                languageSelector.classList.add('hidden');
+                if (matchResult) {
+                    resultContainer.innerHTML = renderMatchResult(matchResult);
+                } else {
+                    resultContainer.innerHTML = '<div class="text-gray-400 text-center py-12 flex flex-col items-center gap-2"><i class="fas fa-chart-line text-4xl opacity-30"></i><p>暂无匹配结果，请点击「开始分析」</p></div>';
+                }
+            } else if (tab === 'jobrec') {
+                tabJobRecBtn.className = "py-2 px-1 text-indigo-600 border-b-2 border-indigo-600 font-medium";
+                tabTranslateBtn.className = "py-2 px-1 text-gray-500 hover:text-gray-700";
+                tabMatchBtn.className = "py-2 px-1 text-gray-500 hover:text-gray-700";
+                languageSelector.classList.remove('hidden');
+                if (jobRecommendations) {
+                    resultContainer.innerHTML = renderJobRecommendations(jobRecommendations);
+                } else if (resumeTextContent) {
+                    loadJobRecommendations(currentJobRecLang);
+                } else {
+                    resultContainer.innerHTML = '<div class="text-gray-400 text-center py-12 flex flex-col items-center gap-2"><i class="fas fa-briefcase text-4xl opacity-30"></i><p>请先上传简历，然后点击「岗位推荐」</p></div>';
+                }
             }
-            updateResultDisplay();
         }
 
-        tabTranslateBtn.addEventListener('click', () => switchTab('translate'));
-        tabMatchBtn.addEventListener('click', () => switchTab('match'));
+        // 语言切换
+        jobRecLang.addEventListener('change', (e) => {
+            currentJobRecLang = e.target.value;
+            if (currentTab === 'jobrec' && resumeTextContent) {
+                loadJobRecommendations(currentJobRecLang);
+            }
+        });
 
+        // 开始分析按钮（保持原有逻辑）
         analyzeBtn.addEventListener('click', async () => {
             const jd = jdTextArea.value.trim();
-            if (!jd) {
-                alert("请粘贴职位描述");
-                return;
-            }
-            if (!resumeTextContent) {
-                alert("请先上传简历或粘贴简历文本");
-                return;
-            }
-
-            // 开始分析：清空结果，标记分析中，刷新显示
+            if (!jd) { alert("请粘贴职位描述"); return; }
+            if (!resumeTextContent) { alert("请先上传简历或粘贴简历文本"); return; }
             translationResult = null;
             matchResult = null;
             isAnalyzing = true;
-            updateResultDisplay();
-
+            if (currentTab === 'translate' || currentTab === 'match') {
+                resultContainer.innerHTML = showLoading();
+            }
             try {
-                const result = await callDifyAPI({
-                    jd_text: jd,
-                    resume_text: resumeTextContent
-                });
+                const result = await callMainWorkflow({ jd_text: jd, resume_text: resumeTextContent });
                 translationResult = result.data.outputs.translation;
                 const analysisRaw = result.data.outputs.analysis;
-                try {
-                    matchResult = JSON.parse(analysisRaw);
-                } catch (e) {
-                    console.warn("匹配结果不是 JSON，原样显示");
-                    matchResult = null;
-                    resultContainer.innerHTML = `<div class="bg-yellow-50 p-4 rounded-lg">匹配结果格式异常，原始内容：<pre>${analysisRaw}</pre></div>`;
-                    isAnalyzing = false;
-                    return;
-                }
+                matchResult = JSON.parse(analysisRaw);
                 isAnalyzing = false;
-                updateResultDisplay();
+                if (currentTab === 'translate') switchTab('translate');
+                else if (currentTab === 'match') switchTab('match');
+                else switchTab('translate');
             } catch (err) {
                 isAnalyzing = false;
                 resultContainer.innerHTML = showError(err.message);
             }
         });
+
+        tabTranslateBtn.addEventListener('click', () => switchTab('translate'));
+        tabMatchBtn.addEventListener('click', () => switchTab('match'));
+        tabJobRecBtn.addEventListener('click', () => switchTab('jobrec'));
+        closeModalBtn.addEventListener('click', closeModal);
+        cancelMatchBtn.addEventListener('click', closeModal);
+        submitMatchBtn.addEventListener('click', submitMatch);
+
+        // 添加灵魂匹配按钮到岗位推荐结果区域（动态）
+        // 在 renderJobRecommendations 中增加按钮
+        const originalRender = renderJobRecommendations;
+        window.renderJobRecommendations = function(data) {
+            let html = originalRender(data);
+            if (data.jobs && data.jobs.length) {
+                html += `<div class="mt-6 text-center"><button id="soulMatchTriggerBtn" class="bg-gradient-to-r from-pink-500 to-rose-500 text-white font-semibold py-2 px-6 rounded-xl shadow hover:scale-105 transition"><i class="fas fa-heart mr-2"></i>🔮 灵魂匹配</button></div>`;
+            }
+            return html;
+        };
+        // 覆盖原来的渲染函数
+        renderJobRecommendations = function(data) {
+            let html = originalRender(data);
+            if (data.jobs && data.jobs.length) {
+                html += `<div class="mt-6 text-center"><button id="soulMatchTriggerBtn" class="bg-gradient-to-r from-pink-500 to-rose-500 text-white font-semibold py-2 px-6 rounded-xl shadow hover:scale-105 transition"><i class="fas fa-heart mr-2"></i>🔮 灵魂匹配</button></div>`;
+            }
+            return html;
+        };
+        // 在 resultContainer 内容更新后绑定按钮事件
+        function bindSoulMatchButton() {
+            const btn = document.getElementById('soulMatchTriggerBtn');
+            if (btn) {
+                btn.removeEventListener('click', openModal);
+                btn.addEventListener('click', openModal);
+            }
+        }
+        // 修改 loadJobRecommendations 和渲染后调用
+        const originalLoad = loadJobRecommendations;
+        window.loadJobRecommendations = async function(lang) {
+            await originalLoad(lang);
+            bindSoulMatchButton();
+        };
+        loadJobRecommendations = async function(lang) {
+            await originalLoad(lang);
+            bindSoulMatchButton();
+        };
     </script>
 </body>
 </html>

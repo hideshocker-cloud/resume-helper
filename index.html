@@ -17,12 +17,15 @@
         .mode-btn-active { background-color: #4f46e5; color: white; box-shadow: 0 2px 8px rgba(79,70,229,0.3); }
         .mode-btn-inactive { background-color: #f3f4f6; color: #4b5563; }
         .keyword-tag { display: inline-block; background: #e0e7ff; color: #3730a3; border-radius: 9999px; padding: 0.2rem 0.7rem; font-size: 0.75rem; margin: 0.2rem; }
-        .best-match-highlight { border: 2px solid #f59e0b; background: #fffbeb; }
+        .best-match-highlight { border: 2px solid #f59e0b; background: #fffbeb; transition: all 0.2s; }
         .question-item { margin-bottom: 1rem; }
         .question-text { font-weight: 500; margin-bottom: 0.5rem; color: #1f2937; }
         .option-group { display: flex; flex-wrap: wrap; gap: 0.75rem; }
         .option-label { display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; background: #f3f4f6; padding: 0.5rem 1rem; border-radius: 2rem; transition: all 0.2s; }
         .option-label.selected { background: #4f46e5; color: white; }
+        /* 智能匹配卡片美化 */
+        .match-card { background: white; border-radius: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #eef2f6; transition: all 0.2s; }
+        .match-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
     </style>
 </head>
 <body class="min-h-screen py-8">
@@ -49,20 +52,14 @@
             </div>
         </div>
 
-        <!-- 模式切换 -->
+        <!-- 模式切换（无图标） -->
         <div class="flex gap-4 mb-6 justify-center">
-            <button id="modeRecommendBtn" class="mode-btn-active px-6 py-2 rounded-full font-medium transition flex items-center gap-2">
-                <i class="fas fa-magic"></i> ✨ 岗位推荐
-            </button>
-            <button id="modeAnalyzeBtn" class="mode-btn-inactive px-6 py-2 rounded-full font-medium transition flex items-center gap-2">
-                <i class="fas fa-chart-line"></i> 📋 岗位分析
-            </button>
+            <button id="modeRecommendBtn" class="mode-btn-active px-6 py-2 rounded-full font-medium transition">岗位推荐</button>
+            <button id="modeAnalyzeBtn" class="mode-btn-inactive px-6 py-2 rounded-full font-medium transition">岗位分析</button>
         </div>
 
         <!-- 动态内容区域 -->
-        <div id="dynamicContent" class="bg-white rounded-2xl shadow-xl p-6">
-            <!-- 岗位推荐模式的 HTML 会动态填充，但为了简单，我们直接写两个模块用 JS 控制显示隐藏 -->
-        </div>
+        <div id="dynamicContent" class="bg-white rounded-2xl shadow-xl p-6"></div>
     </div>
 
     <!-- 岗位推荐模式的内容 -->
@@ -75,13 +72,9 @@
                 <option value="fr">Français</option>
             </select>
         </div>
-        <div class="mb-4 border-t pt-3">
-            <h3 class="font-semibold text-gray-800 mb-3">📋 偏好设置（必答）</h3>
-            <div id="questionsContainer"></div>
-        </div>
         <div class="flex justify-center mb-6">
-            <button id="startRecommendBtn" class="bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold py-2 px-8 rounded-full shadow-lg disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                🔮 开始推荐
+            <button id="startRecommendBtn" class="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-semibold py-2 px-8 rounded-full shadow-lg">
+                🚀 开始推荐
             </button>
         </div>
         <div id="recommendResult" class="mt-4"></div>
@@ -95,7 +88,7 @@
         </div>
         <div class="flex justify-center mb-6">
             <button id="startAnalyzeBtn" class="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-semibold py-2 px-8 rounded-full shadow-lg">
-                <i class="fas fa-chart-line mr-1"></i> 开始分析
+                📊 开始分析
             </button>
         </div>
         <div id="analyzeResult" class="mt-4">
@@ -107,16 +100,32 @@
         </div>
     </div>
 
+    <!-- 灵魂匹配模态框 -->
+    <div id="soulMatchModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl max-w-lg w-full mx-4 p-6 max-h-[85vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">🔮 灵魂匹配</h2>
+                <button id="closeModalBtn" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div id="modalQuestions"></div>
+            <div class="flex justify-end gap-3 mt-6">
+                <button id="cancelModalBtn" class="px-4 py-2 border border-gray-300 rounded-lg">取消</button>
+                <button id="submitPreferencesBtn" class="px-4 py-2 bg-purple-600 text-white rounded-lg">分析</button>
+            </div>
+            <div id="modalResult" class="mt-4"></div>
+        </div>
+    </div>
+
     <script>
         // ---------- 全局变量 ----------
         let resumeTextContent = "";
         let translationResult = null;
         let matchResult = null;
-        let currentMode = "recommend"; // "recommend" or "analyze"
+        let currentMode = "recommend";
         let currentRecommendLanguage = "zh";
+        let currentRecommendJobs = null;      // 存储5个岗位（无best_match）
         let userPreferences = ["", "", "", "", "", ""];
-        let recommendResultData = null;
-        let analyzeResultData = { translation: null, match: null };
+        let modalPrefs = ["", "", "", "", "", ""];  // 弹窗中的临时选择
 
         // 选择题库
         const questions = [
@@ -154,7 +163,6 @@
         const dynamicContent = document.getElementById('dynamicContent');
         const recommendPanel = document.getElementById('recommendPanel');
         const analyzePanel = document.getElementById('analyzePanel');
-        const questionsContainer = document.getElementById('questionsContainer');
         const startRecommendBtn = document.getElementById('startRecommendBtn');
         const recommendResultDiv = document.getElementById('recommendResult');
         const langSelect = document.getElementById('langSelect');
@@ -163,6 +171,12 @@
         const analyzeResultContent = document.getElementById('analyzeResultContent');
         const tabTranslateResult = document.getElementById('tabTranslateResult');
         const tabMatchResult = document.getElementById('tabMatchResult');
+        const modal = document.getElementById('soulMatchModal');
+        const modalQuestions = document.getElementById('modalQuestions');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const cancelModalBtn = document.getElementById('cancelModalBtn');
+        const submitPreferencesBtn = document.getElementById('submitPreferencesBtn');
+        const modalResultDiv = document.getElementById('modalResult');
 
         // 辅助函数
         function showLoading() {
@@ -192,9 +206,43 @@
             return response.json();
         }
 
-        // PDF/Word 解析（复用）
-        function parsePDF(file) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = e => { const typedarray = new Uint8Array(e.target.result); pdfjsLib.getDocument(typedarray).promise.then(pdf => { let fullText = ""; const pages = []; for (let i = 1; i <= pdf.numPages; i++) pages.push(pdf.getPage(i)); Promise.all(pages).then(pages => { let pagePromises = pages.map(page => page.getTextContent()); Promise.all(pagePromises).then(textContents => { textContents.forEach(textContent => { textContent.items.forEach(item => { fullText += item.str + " "; }); }); resolve(fullText.trim()); }).catch(reject); }).catch(reject); }).catch(reject); }; reader.onerror = reject; reader.readAsArrayBuffer(file); }); }
-        function parseDOCX(file) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = e => { mammoth.extractRawText({ arrayBuffer: e.target.result }).then(result => resolve(result.value)).catch(reject); }; reader.onerror = reject; reader.readAsArrayBuffer(file); }); }
+        // PDF/Word 解析
+        function parsePDF(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    const typedarray = new Uint8Array(e.target.result);
+                    pdfjsLib.getDocument(typedarray).promise.then(pdf => {
+                        let fullText = "";
+                        const pages = [];
+                        for (let i = 1; i <= pdf.numPages; i++) pages.push(pdf.getPage(i));
+                        Promise.all(pages).then(pages => {
+                            let pagePromises = pages.map(page => page.getTextContent());
+                            Promise.all(pagePromises).then(textContents => {
+                                textContents.forEach(textContent => {
+                                    textContent.items.forEach(item => { fullText += item.str + " "; });
+                                });
+                                resolve(fullText.trim());
+                            }).catch(reject);
+                        }).catch(reject);
+                    }).catch(reject);
+                };
+                reader.onerror = reject;
+                reader.readAsArrayBuffer(file);
+            });
+        }
+        function parseDOCX(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    mammoth.extractRawText({ arrayBuffer: e.target.result })
+                        .then(result => resolve(result.value))
+                        .catch(reject);
+                };
+                reader.onerror = reject;
+                reader.readAsArrayBuffer(file);
+            });
+        }
 
         uploadBtn.addEventListener('click', () => resumeFileInput.click());
         resumeFileInput.addEventListener('change', async (e) => {
@@ -212,13 +260,34 @@
         });
         resumeTextArea.addEventListener('input', () => { resumeTextContent = resumeTextArea.value; });
 
-        // 渲染岗位推荐结果
-        function renderJobs(data) {
+        // 渲染岗位列表（无 best_match）
+        function renderJobsList(data) {
             if (!data || !data.jobs || data.jobs.length === 0) return '<div class="text-center py-8 text-gray-500">暂无推荐岗位，请检查简历内容或稍后重试。</div>';
             let html = `<div class="space-y-5">`;
             data.jobs.forEach((job, idx) => {
+                html += `<div class="border rounded-xl p-4 hover:shadow-md transition">
+                            <div class="flex justify-between items-start flex-wrap gap-2">
+                                <h3 class="text-lg font-bold text-indigo-700">${idx+1}. ${job.title}</h3>
+                                <span class="bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full text-sm">匹配度 ${job.match_score}%</span>
+                            </div>
+                            <p class="text-gray-600 text-sm mt-1">${job.description}</p>
+                            <div class="mt-2 flex flex-wrap gap-1">
+                                ${job.keywords.map(kw => `<span class="keyword-tag">${kw}</span>`).join('')}
+                            </div>
+                        </div>`;
+            });
+            html += `</div>`;
+            html += `<div class="mt-6 text-center"><button id="soulMatchBtn" class="bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium py-2 px-6 rounded-full shadow hover:shadow-lg transition">🔮 灵魂匹配</button></div>`;
+            return html;
+        }
+
+        // 渲染带 best_match 的结果（用于灵魂匹配后）
+        function renderJobsWithBest(data) {
+            if (!data || !data.jobs || data.jobs.length === 0) return '<div class="text-center py-8 text-gray-500">暂无推荐岗位</div>';
+            let html = `<div class="space-y-5">`;
+            data.jobs.forEach((job, idx) => {
                 const isBest = data.best_match && data.best_match.title === job.title;
-                html += `<div class="border rounded-xl p-4 ${isBest ? 'best-match-highlight' : ''}">
+                html += `<div class="border rounded-xl p-4 ${isBest ? 'best-match-highlight' : ''} transition">
                             <div class="flex justify-between items-start flex-wrap gap-2">
                                 <h3 class="text-lg font-bold text-indigo-700">${idx+1}. ${job.title}</h3>
                                 <span class="bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full text-sm">匹配度 ${job.match_score}%</span>
@@ -231,11 +300,11 @@
             });
             html += `</div>`;
             if (data.best_match && data.best_reason) {
-                html += `<div class="mt-5 p-3 bg-amber-50 rounded-xl border border-amber-200">
+                html += `<div class="mt-5 p-4 bg-amber-50 rounded-xl border border-amber-200">
                             <div class="flex items-start gap-2">
                                 <i class="fas fa-crown text-amber-500 text-xl"></i>
                                 <div>
-                                    <span class="font-bold text-amber-800">🔮 最佳匹配：</span>
+                                    <span class="font-bold text-amber-800">🔮 灵魂匹配推荐：</span>
                                     <span class="font-semibold text-amber-700">${data.best_match.title}</span>
                                     <p class="text-gray-700 text-sm mt-1">${data.best_reason}</p>
                                 </div>
@@ -245,18 +314,95 @@
             return html;
         }
 
-        // 加载岗位推荐（调用工作流）
+        // 开始推荐（仅基于简历）
         async function loadRecommendations() {
             if (!resumeTextContent) {
                 recommendResultDiv.innerHTML = showError("请先上传简历");
                 return;
             }
-            if (userPreferences.some(v => !v)) {
-                alert("请完成所有选择题");
+            recommendResultDiv.innerHTML = showLoading();
+            try {
+                const inputs = {
+                    resume_text: resumeTextContent,
+                    language: currentRecommendLanguage,
+                    preferences: ""  // 不传偏好，只返回5个岗位
+                };
+                const res = await callJobRecommender(inputs);
+                let rawOutput = res.data.outputs?.recommendation || res.data.outputs?.result || res.data.outputs?.text;
+                if (!rawOutput) throw new Error('未收到数据');
+                let jsonStr = rawOutput.trim();
+                if (jsonStr.startsWith('```json')) jsonStr = jsonStr.replace(/^```json\n?/, '').replace(/\n?```$/, '');
+                else if (jsonStr.startsWith('```')) jsonStr = jsonStr.replace(/^```\n?/, '').replace(/\n?```$/, '');
+                let parsed = JSON.parse(jsonStr);
+                let data;
+                if (Array.isArray(parsed)) {
+                    data = { jobs: parsed };
+                } else if (parsed.jobs) {
+                    data = { jobs: parsed.jobs };
+                } else {
+                    data = { jobs: [] };
+                }
+                currentRecommendJobs = data;
+                recommendResultDiv.innerHTML = renderJobsList(data);
+                // 绑定灵魂匹配按钮
+                const soulBtn = document.getElementById('soulMatchBtn');
+                if (soulBtn) soulBtn.addEventListener('click', openSoulMatchModal);
+            } catch (err) {
+                console.error(err);
+                recommendResultDiv.innerHTML = showError(err.message);
+            }
+        }
+
+        // 灵魂匹配弹窗逻辑
+        function openSoulMatchModal() {
+            if (!currentRecommendJobs || !currentRecommendJobs.jobs) {
+                alert("请先点击「开始推荐」获取岗位列表");
                 return;
             }
-            const prefStr = userPreferences.join(',');
-            recommendResultDiv.innerHTML = showLoading();
+            modalPrefs = ["", "", "", "", "", ""];
+            // 渲染选择题
+            let html = "";
+            for (let i = 0; i < questions.length; i++) {
+                html += `<div class="question-item">
+                            <div class="question-text">${i+1}. ${questions[i]}</div>
+                            <div class="option-group" data-qidx="${i}">`;
+                for (let j = 0; j < optionsList[i].length; j++) {
+                    const val = optionValues[i][j];
+                    html += `<label class="option-label" data-val="${val}">
+                                <input type="radio" name="q${i}" value="${val}" style="display:none;">
+                                <span>${optionsList[i][j]}</span>
+                            </label>`;
+                }
+                html += `</div></div>`;
+            }
+            modalQuestions.innerHTML = html;
+            // 绑定选项点击
+            document.querySelectorAll('#modalQuestions .option-label').forEach(label => {
+                label.addEventListener('click', (e) => {
+                    const parent = label.closest('.option-group');
+                    const qIdx = parseInt(parent.getAttribute('data-qidx'));
+                    const val = label.getAttribute('data-val');
+                    parent.querySelectorAll('.option-label').forEach(l => l.classList.remove('selected'));
+                    label.classList.add('selected');
+                    modalPrefs[qIdx] = val;
+                });
+            });
+            modalResultDiv.innerHTML = "";
+            modal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            modal.classList.add('hidden');
+            modalResultDiv.innerHTML = "";
+        }
+
+        async function submitPreferences() {
+            if (modalPrefs.some(v => !v)) {
+                modalResultDiv.innerHTML = '<div class="text-red-500 text-sm mt-2">请完成所有选择题</div>';
+                return;
+            }
+            const prefStr = modalPrefs.join(',');
+            modalResultDiv.innerHTML = '<div class="text-center py-4"><div class="loader inline-block"></div><p class="mt-2">分析中...</p></div>';
             try {
                 const inputs = {
                     resume_text: resumeTextContent,
@@ -270,10 +416,8 @@
                 if (jsonStr.startsWith('```json')) jsonStr = jsonStr.replace(/^```json\n?/, '').replace(/\n?```$/, '');
                 else if (jsonStr.startsWith('```')) jsonStr = jsonStr.replace(/^```\n?/, '').replace(/\n?```$/, '');
                 let parsed = JSON.parse(jsonStr);
-                // 如果返回的是数组，转换成对象
                 let data;
                 if (Array.isArray(parsed)) {
-                    // 兼容旧格式：数组最后一个元素可能是 best_match
                     if (parsed.length && parsed[parsed.length-1].best_match) {
                         const jobs = parsed.slice(0, -1);
                         const best_match = parsed[parsed.length-1].best_match;
@@ -282,55 +426,27 @@
                     } else {
                         data = { jobs: parsed };
                     }
-                } else {
+                } else if (parsed.jobs) {
                     data = parsed;
+                } else {
+                    data = { jobs: [] };
                 }
-                recommendResultDiv.innerHTML = renderJobs(data);
+                // 更新当前推荐结果（加上最佳匹配）
+                currentRecommendJobs = data;
+                recommendResultDiv.innerHTML = renderJobsWithBest(data);
+                closeModal();
             } catch (err) {
-                console.error(err);
-                recommendResultDiv.innerHTML = showError(err.message);
+                modalResultDiv.innerHTML = `<div class="text-red-500 text-sm mt-2">${err.message}</div>`;
             }
         }
 
-        // 生成选择题界面
-        function renderQuestions() {
-            let html = "";
-            for (let i = 0; i < questions.length; i++) {
-                html += `<div class="question-item">
-                            <div class="question-text">${i+1}. ${questions[i]}</div>
-                            <div class="option-group" data-qidx="${i}">`;
-                for (let j = 0; j < optionsList[i].length; j++) {
-                    const val = optionValues[i][j];
-                    const isSelected = (userPreferences[i] === val);
-                    html += `<label class="option-label ${isSelected ? 'selected' : ''}" data-val="${val}">
-                                <input type="radio" name="q${i}" value="${val}" style="display:none;" ${isSelected ? 'checked' : ''}>
-                                <span>${optionsList[i][j]}</span>
-                            </label>`;
-                }
-                html += `</div></div>`;
-            }
-            questionsContainer.innerHTML = html;
-            // 绑定事件
-            document.querySelectorAll('.option-label').forEach(label => {
-                label.addEventListener('click', (e) => {
-                    const parent = label.closest('.option-group');
-                    const qIdx = parent.getAttribute('data-qidx');
-                    const val = label.getAttribute('data-val');
-                    parent.querySelectorAll('.option-label').forEach(l => l.classList.remove('selected'));
-                    label.classList.add('selected');
-                    userPreferences[qIdx] = val;
-                    // 检查是否全部完成
-                    const allSelected = userPreferences.every(v => v !== "");
-                    startRecommendBtn.disabled = !allSelected;
-                });
-            });
-            const allSelected = userPreferences.every(v => v !== "");
-            startRecommendBtn.disabled = !allSelected;
-        }
+        closeModalBtn.addEventListener('click', closeModal);
+        cancelModalBtn.addEventListener('click', closeModal);
+        submitPreferencesBtn.addEventListener('click', submitPreferences);
+        window.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
 
-        // 渲染 JD 分析（三卡片）
+        // 岗位分析相关渲染
         function renderTranslation(text) {
-            // 解析文本中的三个部分（简化解析）
             const sections = { "岗位职责": "", "岗位要求": "", "加分项": "" };
             let current = null;
             const lines = text.split('\n');
@@ -348,24 +464,33 @@
                         <div class="${cardClass}"><h3 class="font-semibold">⭐ 加分项</h3><div class="text-sm">${sections["加分项"] || "无"}</div></div>
                     </div>`;
         }
-        // 智能匹配渲染（四卡片）
         function renderMatch(data) {
             const overall = data.overall_match || { score: 0, reason: '' };
             const subs = data.sub_scores || { skills: 0, experience: 0, education: 0 };
             const opt = data.optimization || { keep: [], weaken: [], deepen: [], not_match: [] };
             const advice = data.application_advice || { suggestion: '', reason: '' };
-            const cardClass = "bg-white rounded-xl p-3 shadow-sm";
-            return `<div class="mb-4"><div class="text-2xl font-bold text-indigo-600">匹配度 ${overall.score}%</div><div class="text-sm">${overall.reason}</div><div class="flex gap-3 text-sm mt-2"><span>技能 ${subs.skills}%</span><span>经验 ${subs.experience}%</span><span>教育 ${subs.education}%</span></div></div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div class="${cardClass}"><h3 class="font-semibold text-green-700">✅ 强匹配</h3><ul class="list-disc pl-4">${opt.keep.map(k=>`<li>${k}</li>`).join('')||'<li>无</li>'}</ul></div>
-                        <div class="${cardClass}"><h3 class="font-semibold text-yellow-700">⚠️ 可弱化</h3><ul class="list-disc pl-4">${opt.weaken.map(w=>`<li>${w}</li>`).join('')||'<li>无</li>'}</ul></div>
-                        <div class="${cardClass}"><h3 class="font-semibold text-blue-700">🔍 可深挖</h3><ul class="list-disc pl-4">${opt.deepen.map(d=>`<li>${d}</li>`).join('')||'<li>无</li>'}</ul></div>
-                        <div class="${cardClass}"><h3 class="font-semibold text-red-700">❌ 不匹配</h3><ul class="list-disc pl-4">${opt.not_match.map(n=>`<li>${n}</li>`).join('')||'<li>无</li>'}</ul></div>
+            return `
+                <div class="mb-5">
+                    <div class="flex items-center justify-between flex-wrap gap-2">
+                        <span class="text-2xl font-bold text-indigo-600">匹配度 ${overall.score}%</span>
+                        <span class="text-sm text-gray-500">${overall.reason}</span>
                     </div>
-                    <div class="mt-3 p-2 bg-indigo-50 rounded"><span class="font-semibold">投递建议：</span>${advice.suggestion} — ${advice.reason}</div>`;
+                    <div class="flex gap-4 text-sm mt-2">
+                        <span>技能 ${subs.skills}%</span>
+                        <span>经验 ${subs.experience}%</span>
+                        <span>教育 ${subs.education}%</span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="match-card p-4"><h3 class="font-semibold text-green-700">✅ 强匹配</h3><ul class="list-disc pl-4 mt-1">${opt.keep.map(k=>`<li>${k}</li>`).join('')||'<li>无</li>'}</ul></div>
+                    <div class="match-card p-4"><h3 class="font-semibold text-yellow-700">⚠️ 可弱化</h3><ul class="list-disc pl-4 mt-1">${opt.weaken.map(w=>`<li>${w}</li>`).join('')||'<li>无</li>'}</ul></div>
+                    <div class="match-card p-4"><h3 class="font-semibold text-blue-700">🔍 可深挖</h3><ul class="list-disc pl-4 mt-1">${opt.deepen.map(d=>`<li>${d}</li>`).join('')||'<li>无</li>'}</ul></div>
+                    <div class="match-card p-4"><h3 class="font-semibold text-red-700">❌ 不匹配</h3><ul class="list-disc pl-4 mt-1">${opt.not_match.map(n=>`<li>${n}</li>`).join('')||'<li>无</li>'}</ul></div>
+                </div>
+                <div class="mt-4 p-3 bg-indigo-50 rounded-lg"><span class="font-semibold">📌 投递建议：</span> ${advice.suggestion} — ${advice.reason}</div>
+            `;
         }
 
-        // 岗位分析逻辑
         async function runAnalyze() {
             const jd = jdTextArea.value.trim();
             if (!jd) { alert("请粘贴职位描述"); return; }
@@ -373,32 +498,28 @@
             analyzeResultContent.innerHTML = showLoading();
             try {
                 const res = await callPIPEI({ jd_text: jd, resume_text: resumeTextContent });
-                const translation = res.data.outputs.translation;
+                translationResult = res.data.outputs.translation;
                 const analysisRaw = res.data.outputs.analysis;
-                let match = null;
-                try { match = JSON.parse(analysisRaw); } catch(e) { console.warn(e); }
-                analyzeResultData = { translation, match };
-                // 默认显示翻译
-                if (translation) analyzeResultContent.innerHTML = renderTranslation(translation);
+                try { matchResult = JSON.parse(analysisRaw); } catch(e) { matchResult = null; }
+                if (translationResult) analyzeResultContent.innerHTML = renderTranslation(translationResult);
                 else analyzeResultContent.innerHTML = '<div class="text-center">翻译结果为空</div>';
             } catch (err) {
                 analyzeResultContent.innerHTML = showError(err.message);
             }
         }
 
-        // 选项卡切换（岗位分析结果区）
         let currentAnalyzeTab = 'translate';
         function switchAnalyzeTab(tab) {
             currentAnalyzeTab = tab;
             if (tab === 'translate') {
                 tabTranslateResult.className = "py-1 px-2 text-indigo-600 border-b-2 border-indigo-600";
                 tabMatchResult.className = "py-1 px-2 text-gray-500";
-                if (analyzeResultData.translation) analyzeResultContent.innerHTML = renderTranslation(analyzeResultData.translation);
+                if (translationResult) analyzeResultContent.innerHTML = renderTranslation(translationResult);
                 else analyzeResultContent.innerHTML = '<div class="text-center text-gray-500">暂无JD分析结果，请先分析</div>';
             } else {
                 tabMatchResult.className = "py-1 px-2 text-indigo-600 border-b-2 border-indigo-600";
                 tabTranslateResult.className = "py-1 px-2 text-gray-500";
-                if (analyzeResultData.match) analyzeResultContent.innerHTML = renderMatch(analyzeResultData.match);
+                if (matchResult) analyzeResultContent.innerHTML = renderMatch(matchResult);
                 else analyzeResultContent.innerHTML = '<div class="text-center text-gray-500">暂无智能匹配结果，请先分析</div>';
             }
         }
@@ -409,27 +530,24 @@
         function setMode(mode) {
             currentMode = mode;
             if (mode === 'recommend') {
-                modeRecommendBtn.className = "mode-btn-active px-6 py-2 rounded-full font-medium transition flex items-center gap-2";
-                modeAnalyzeBtn.className = "mode-btn-inactive px-6 py-2 rounded-full font-medium transition flex items-center gap-2";
+                modeRecommendBtn.className = "mode-btn-active px-6 py-2 rounded-full font-medium transition";
+                modeAnalyzeBtn.className = "mode-btn-inactive px-6 py-2 rounded-full font-medium transition";
                 recommendPanel.classList.remove('hidden');
                 analyzePanel.classList.add('hidden');
-                // 确保选择题已渲染
-                if (questionsContainer.children.length === 0) renderQuestions();
             } else {
-                modeAnalyzeBtn.className = "mode-btn-active px-6 py-2 rounded-full font-medium transition flex items-center gap-2";
-                modeRecommendBtn.className = "mode-btn-inactive px-6 py-2 rounded-full font-medium transition flex items-center gap-2";
+                modeAnalyzeBtn.className = "mode-btn-active px-6 py-2 rounded-full font-medium transition";
+                modeRecommendBtn.className = "mode-btn-inactive px-6 py-2 rounded-full font-medium transition";
                 analyzePanel.classList.remove('hidden');
                 recommendPanel.classList.add('hidden');
             }
         }
 
-        // 初始化和事件绑定
+        // 初始化
         function init() {
             dynamicContent.appendChild(recommendPanel);
             dynamicContent.appendChild(analyzePanel);
             recommendPanel.classList.remove('hidden');
             analyzePanel.classList.add('hidden');
-            renderQuestions();
             startRecommendBtn.addEventListener('click', loadRecommendations);
             startAnalyzeBtn.addEventListener('click', runAnalyze);
             langSelect.addEventListener('change', (e) => { currentRecommendLanguage = e.target.value; });

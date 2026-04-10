@@ -26,13 +26,15 @@
         /* 智能匹配卡片样式 */
         .match-score-card { background: linear-gradient(135deg, #fff, #f8fafc); border-radius: 1rem; padding: 1.2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
         .match-subscore { display: inline-block; background: #eef2ff; color: #4f46e5; border-radius: 9999px; padding: 0.2rem 0.8rem; font-size: 0.8rem; font-weight: 500; }
-        .card-keep { background: #f0fdf4; border-left: 4px solid #22c55e; }
-        .card-weaken { background: #fefce8; border-left: 4px solid #eab308; }
-        .card-deepen { background: #eff6ff; border-left: 4px solid #3b82f6; }
-        .card-notmatch { background: #fef2f2; border-left: 4px solid #ef4444; }
+        .card-keep { background: #f0fdf4; border-left: 4px solid #22c55e; border-radius: 0.75rem; }
+        .card-weaken { background: #fefce8; border-left: 4px solid #eab308; border-radius: 0.75rem; }
+        .card-deepen { background: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 0.75rem; }
+        .card-notmatch { background: #fef2f2; border-left: 4px solid #ef4444; border-radius: 0.75rem; }
         .advice-card { background: #f5f3ff; border-left: 4px solid #8b5cf6; border-radius: 0.75rem; }
-        .list-item { margin-bottom: 0.4rem; display: flex; align-items: baseline; gap: 0.5rem; }
-        .list-item::before { content: "•"; font-weight: bold; color: currentColor; }
+        /* 自定义列表：只用一个点 */
+        .custom-list-item { display: flex; align-items: baseline; gap: 0.5rem; margin-bottom: 0.4rem; }
+        .custom-list-item::before { content: "•"; font-weight: bold; color: currentColor; flex-shrink: 0; }
+        .card-title-badge { display: inline-block; background: rgba(0,0,0,0.05); padding: 0.2rem 0.8rem; border-radius: 2rem; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.75rem; }
     </style>
 </head>
 <body class="min-h-screen py-8">
@@ -59,7 +61,7 @@
             </div>
         </div>
 
-        <!-- 模式切换（无图标） -->
+        <!-- 模式切换 -->
         <div class="flex gap-4 mb-6 justify-center">
             <button id="modeRecommendBtn" class="mode-btn-active px-6 py-2 rounded-full font-medium transition">岗位推荐</button>
             <button id="modeAnalyzeBtn" class="mode-btn-inactive px-6 py-2 rounded-full font-medium transition">岗位分析</button>
@@ -430,7 +432,7 @@
         submitPreferencesBtn.addEventListener('click', submitPreferences);
         window.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
 
-        // 美化后的智能匹配渲染函数
+        // 美化后的智能匹配渲染函数（修复双点，卡片标题独立，列表项单点）
         function renderTranslation(text) {
             const sections = { "岗位职责": "", "岗位要求": "", "加分项": "" };
             let current = null;
@@ -456,10 +458,10 @@
             const opt = data.optimization || { keep: [], weaken: [], deepen: [], not_match: [] };
             const advice = data.application_advice || { suggestion: '', reason: '' };
 
-            // 辅助函数：渲染带 • 的列表项（不使用 ul li 以避免圆点）
+            // 辅助：生成单个列表项（只用一个点）
             const renderList = (items) => {
                 if (!items || items.length === 0) return '<div class="text-gray-400 text-sm">无</div>';
-                return items.map(item => `<div class="list-item text-sm">${item}</div>`).join('');
+                return items.map(item => `<div class="custom-list-item text-sm">${item}</div>`).join('');
             };
 
             return `
@@ -476,25 +478,25 @@
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
-                    <div class="card-keep rounded-xl p-4">
-                        <h3 class="font-semibold text-green-700 text-lg mb-2">✅ 强匹配</h3>
+                    <div class="card-keep p-4">
+                        <div class="card-title-badge bg-green-100 text-green-800">✅ 强匹配</div>
                         ${renderList(opt.keep)}
                     </div>
-                    <div class="card-weaken rounded-xl p-4">
-                        <h3 class="font-semibold text-yellow-700 text-lg mb-2">⚠️ 可弱化</h3>
+                    <div class="card-weaken p-4">
+                        <div class="card-title-badge bg-yellow-100 text-yellow-800">⚠️ 可弱化</div>
                         ${renderList(opt.weaken)}
                     </div>
-                    <div class="card-deepen rounded-xl p-4">
-                        <h3 class="font-semibold text-blue-700 text-lg mb-2">🔍 可深挖</h3>
+                    <div class="card-deepen p-4">
+                        <div class="card-title-badge bg-blue-100 text-blue-800">🔍 可深挖</div>
                         ${renderList(opt.deepen)}
                     </div>
-                    <div class="card-notmatch rounded-xl p-4">
-                        <h3 class="font-semibold text-red-700 text-lg mb-2">❌ 不匹配</h3>
+                    <div class="card-notmatch p-4">
+                        <div class="card-title-badge bg-red-100 text-red-800">❌ 不匹配</div>
                         ${renderList(opt.not_match)}
                     </div>
                 </div>
 
-                <div class="advice-card rounded-xl p-4">
+                <div class="advice-card p-4">
                     <div class="flex items-start gap-2">
                         <i class="fas fa-lightbulb text-purple-500 text-xl mt-0.5"></i>
                         <div>

@@ -188,8 +188,8 @@
         let matchResult = null;
         let currentMode = "recommend";
         let currentRecommendLanguage = "zh";
-        let currentRecommendJobs = null;      // 存储 { jobs: [...] }
-        let cachedJobsArray = null;            // 存储 jobs 数组（用于灵魂匹配）
+        let currentRecommendJobs = null;      // 存储当前推荐的岗位列表（仅jobs数组）
+        let cachedJobs = null;                 // 缓存第一次推荐的jobs数组，用于灵魂匹配
         let userPreferences = ["", "", "", "", "", ""];
         let modalPrefs = ["", "", "", "", "", ""];
 
@@ -322,12 +322,34 @@
         });
         resumeTextArea.addEventListener('input', () => { resumeTextContent = resumeTextArea.value; });
 
-        // 渲染岗位列表（支持 best_match 高亮）
-        function renderJobs(data) {
-            if (!data || !data.jobs || data.jobs.length === 0) return '<div class="text-center py-8 text-gray-500">暂无推荐岗位，请检查简历内容或稍后重试。</div>';
+        // 渲染岗位列表（无 best_match），并确保按钮始终出现
+        function renderJobsList(jobs) {
+            if (!jobs || jobs.length === 0) return '<div class="text-center py-8 text-gray-500">暂无推荐岗位，请检查简历内容或稍后重试。</div>';
             let html = `<div class="space-y-5">`;
-            data.jobs.forEach((job, idx) => {
-                const isBest = data.best_match && data.best_match.title === job.title;
+            jobs.forEach((job, idx) => {
+                html += `<div class="bg-white rounded-xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition">
+                            <div class="flex justify-between items-start flex-wrap gap-2">
+                                <h3 class="text-xl font-bold text-indigo-700">${idx+1}. ${job.title}</h3>
+                                <span class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-semibold">匹配度 ${job.match_score}%</span>
+                            </div>
+                            <p class="text-gray-600 text-sm mt-2">${job.description}</p>
+                            <div class="mt-3 flex flex-wrap gap-1">
+                                ${job.keywords.map(kw => `<span class="keyword-tag">${kw}</span>`).join('')}
+                            </div>
+                        </div>`;
+            });
+            html += `</div>`;
+            // 始终显示灵魂匹配按钮
+            html += `<div class="mt-8 text-center"><button id="soulMatchBtn" class="bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold py-2.5 px-8 rounded-full shadow-md hover:shadow-lg transition transform hover:scale-105 inline-flex items-center gap-2"><i class="fas fa-heart"></i> 灵魂匹配</button></div>`;
+            return html;
+        }
+
+        // 渲染带 best_match 的结果（仍然显示按钮，但会覆盖之前的按钮）
+        function renderJobsWithBest(jobs, bestMatch, bestReason) {
+            if (!jobs || jobs.length === 0) return '<div class="text-center py-8 text-gray-500">暂无推荐岗位</div>';
+            let html = `<div class="space-y-5">`;
+            jobs.forEach((job, idx) => {
+                const isBest = bestMatch && bestMatch.title === job.title;
                 html += `<div class="bg-white rounded-xl p-5 shadow-sm border ${isBest ? 'border-amber-300 best-match-highlight' : 'border-gray-100'} transition">
                             <div class="flex justify-between items-start flex-wrap gap-2">
                                 <h3 class="text-xl font-bold text-indigo-700">${idx+1}. ${job.title}</h3>
@@ -340,22 +362,24 @@
                         </div>`;
             });
             html += `</div>`;
-            if (data.best_match && data.best_reason) {
-                html += `<div class="mt-6 p-5 bg-amber-50 rounded-xl border border-amber-200 shadow-sm">
+            if (bestMatch && bestReason) {
+                html += `<div class="mt-5 p-4 bg-amber-50 rounded-xl border border-amber-200 shadow-sm">
                             <div class="flex items-start gap-3">
                                 <i class="fas fa-crown text-amber-500 text-2xl"></i>
                                 <div>
-                                    <span class="font-bold text-amber-800 text-lg">灵魂匹配推荐：</span>
-                                    <span class="font-semibold text-amber-700">${data.best_match.title}</span>
-                                    <p class="text-gray-700 text-sm mt-1">${data.best_reason}</p>
+                                    <span class="font-bold text-amber-800 text-lg">🔮 灵魂匹配推荐：</span>
+                                    <span class="font-semibold text-amber-700">${bestMatch.title}</span>
+                                    <p class="text-gray-700 text-sm mt-1">${bestReason}</p>
                                 </div>
                             </div>
                          </div>`;
             }
+            // 仍然保留灵魂匹配按钮，方便用户重新匹配
+            html += `<div class="mt-6 text-center"><button id="soulMatchBtnAgain" class="bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold py-2.5 px-8 rounded-full shadow-md hover:shadow-lg transition transform hover:scale-105 inline-flex items-center gap-2"><i class="fas fa-heart"></i> 重新灵魂匹配</button></div>`;
             return html;
         }
 
-        // 开始推荐（首次，不传 existing_jobs）
+        // 开始推荐（仅基于简历）
         async function loadRecommendations() {
             if (!resumeTextContent) {
                 recommendResultDiv.innerHTML = showError("请先上传简历");
@@ -363,12 +387,7 @@
             }
             recommendResultDiv.innerHTML = showLoading();
             try {
-                const inputs = {
-                    resume_text: resumeTextContent,
-                    language: currentRecommendLanguage,
-                    preferences: "",
-                    existing_jobs: ""   // 不传已有列表
-                };
+                const inputs = { resume_text: resumeTextContent, language: currentRecommendLanguage, preferences: "", existing_jobs: "" };
                 const res = await callJobRecommender(inputs);
                 let rawOutput = res.data.outputs?.recommendation || res.data.outputs?.result || res.data.outputs?.text;
                 if (!rawOutput) throw new Error('未收到数据');
@@ -376,13 +395,13 @@
                 if (jsonStr.startsWith('```json')) jsonStr = jsonStr.replace(/^```json\n?/, '').replace(/\n?```$/, '');
                 else if (jsonStr.startsWith('```')) jsonStr = jsonStr.replace(/^```\n?/, '').replace(/\n?```$/, '');
                 let parsed = JSON.parse(jsonStr);
-                let data;
-                if (Array.isArray(parsed)) data = { jobs: parsed };
-                else if (parsed.jobs) data = { jobs: parsed.jobs };
-                else data = { jobs: [] };
-                currentRecommendJobs = data;
-                cachedJobsArray = data.jobs;   // 缓存岗位数组
-                recommendResultDiv.innerHTML = renderJobs(data);
+                let jobs = parsed.jobs || [];
+                if (!jobs.length) throw new Error('未获取到岗位列表');
+                // 缓存 jobs 用于灵魂匹配
+                cachedJobs = jobs;
+                currentRecommendJobs = jobs;
+                recommendResultDiv.innerHTML = renderJobsList(jobs);
+                // 绑定灵魂匹配按钮（使用事件委托或直接查找）
                 const soulBtn = document.getElementById('soulMatchBtn');
                 if (soulBtn) soulBtn.addEventListener('click', openSoulMatchModal);
             } catch (err) {
@@ -391,9 +410,9 @@
             }
         }
 
-        // 灵魂匹配弹窗
+        // 打开灵魂匹配模态框
         function openSoulMatchModal() {
-            if (!cachedJobsArray || cachedJobsArray.length === 0) {
+            if (!cachedJobs || cachedJobs.length === 0) {
                 alert("请先点击「开始推荐」获取岗位列表");
                 return;
             }
@@ -432,21 +451,23 @@
             modalResultDiv.innerHTML = "";
         }
 
-        // 灵魂匹配提交（传入 existing_jobs）
+        // 提交偏好，进行灵魂匹配
         async function submitPreferences() {
             if (modalPrefs.some(v => !v)) {
                 modalResultDiv.innerHTML = '<div class="text-red-500 text-sm mt-2">请完成所有选择题</div>';
                 return;
             }
             const prefStr = modalPrefs.join(',');
+            // 显示 loading
             modalQuestions.innerHTML = '<div class="flex justify-center py-12"><div class="loader"></div><span class="ml-3 text-gray-500">分析中，请稍候...</span></div>';
             modalResultDiv.innerHTML = "";
             try {
+                // 传入缓存的 jobs 作为 existing_jobs
                 const inputs = {
-                    resume_text: resumeTextContent,   // 仍需要简历文本（模型可能用于参考，但不会改变 jobs）
+                    resume_text: resumeTextContent,
                     language: currentRecommendLanguage,
                     preferences: prefStr,
-                    existing_jobs: JSON.stringify(cachedJobsArray)   // 传入缓存的岗位列表
+                    existing_jobs: JSON.stringify(cachedJobs)
                 };
                 const res = await callJobRecommender(inputs);
                 let rawOutput = res.data.outputs?.recommendation || res.data.outputs?.result || res.data.outputs?.text;
@@ -455,24 +476,15 @@
                 if (jsonStr.startsWith('```json')) jsonStr = jsonStr.replace(/^```json\n?/, '').replace(/\n?```$/, '');
                 else if (jsonStr.startsWith('```')) jsonStr = jsonStr.replace(/^```\n?/, '').replace(/\n?```$/, '');
                 let parsed = JSON.parse(jsonStr);
-                let data;
-                if (Array.isArray(parsed)) {
-                    data = { jobs: cachedJobsArray };  // 确保 jobs 不变
-                    if (parsed.length && parsed[parsed.length-1].best_match) {
-                        data.best_match = parsed[parsed.length-1].best_match;
-                        data.best_reason = parsed[parsed.length-1].best_reason;
-                    }
-                } else if (parsed.jobs) {
-                    data = parsed;
-                    // 确保 jobs 与缓存一致（如果模型返回不同，强制覆盖）
-                    if (JSON.stringify(data.jobs) !== JSON.stringify(cachedJobsArray)) {
-                        data.jobs = cachedJobsArray;
-                    }
-                } else {
-                    data = { jobs: cachedJobsArray };
-                }
-                currentRecommendJobs = data;
-                recommendResultDiv.innerHTML = renderJobs(data);
+                let jobs = parsed.jobs || [];
+                let bestMatch = parsed.best_match || null;
+                let bestReason = parsed.best_reason || null;
+                if (!jobs.length) jobs = cachedJobs; // 保底
+                currentRecommendJobs = jobs;
+                recommendResultDiv.innerHTML = renderJobsWithBest(jobs, bestMatch, bestReason);
+                // 重新绑定重新灵魂匹配按钮
+                const soulBtnAgain = document.getElementById('soulMatchBtnAgain');
+                if (soulBtnAgain) soulBtnAgain.addEventListener('click', openSoulMatchModal);
                 closeModal();
             } catch (err) {
                 // 恢复问题界面
